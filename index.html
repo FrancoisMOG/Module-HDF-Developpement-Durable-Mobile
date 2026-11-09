@@ -1,0 +1,2932 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#27ae60">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Développement Durable – Mobile</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+ 
+    <style>
+        /* --- VARIABLES CSS --- */
+        :root {
+            --primary-color: #2ecc71;
+            --primary-dark: #27ae60;
+            --accent-climat: #e74c3c;
+            --accent-action: #f39c12;
+            --quiz-bg: #f8f9fa;
+            --text-color: #2c3e50;
+            --bg-color: #ecf0f1;
+            --white: #ffffff;
+            --shadow: 0 10px 30px rgba(0,0,0,0.1);
+            --transition-speed: 0.4s;
+            --font-main: 'Poppins', sans-serif;
+        }
+ 
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+ 
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow: hidden;
+        }
+ 
+        /* --- CONTENEUR PRINCIPAL --- */
+        .app-wrapper {
+            width: 100%;
+            max-width: 1000px;
+            height: 90vh;
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            position: relative;
+        }
+ 
+        /* --- CHRONOMÈTRE --- */
+        .timer-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(44, 62, 80, 0.9);
+            color: #fff;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            font-weight: bold;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            pointer-events: none;
+        }
+ 
+        /* --- BARRE DE PROGRESSION (HAUT CENTRE) --- */
+        .progress-container {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+ 
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px 20px;
+            border-radius: 50px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            z-index: 200;
+            font-size: 0.85rem;
+            color: var(--text-color);
+            font-weight: 600;
+            border: 1px solid #eee;
+            backdrop-filter: blur(5px);
+            transition: width 0.3s ease;
+            white-space: nowrap;
+        }
+ 
+        .progress-bar-bg {
+            width: 80px;
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+ 
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--primary-color);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+ 
+        /* MASQUAGE DE LA BARRE DE PROGRESSION POUR LE QUIZ FINAL */
+        .app-wrapper.view-final-quiz .progress-container {
+            display: none !important; /* Force le masquage */
+        }
+ 
+        #btn-unlock {
+            display: none;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            animation: fadeIn 0.5s ease-in-out;
+        }
+ 
+        #btn-unlock:hover {
+            background: var(--primary-dark);
+            transform: scale(1.05);
+        }
+ 
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+ 
+        /* --- GESTION DES VUES --- */
+        .view {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: flex;
+            flex-direction: column;
+            transition: opacity var(--transition-speed) ease, transform var(--transition-speed) ease;
+            opacity: 0;
+            visibility: hidden;
+            transform: scale(0.98);
+            background: var(--white);
+            /* CORRECTION : toute vue trop haute pour l'écran devient défilable (plus de boutons coupés) */
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        /* CORRECTION : les blocs de contenu prennent la place restante sous la barre de navigation
+           au lieu de forcer 100% de hauteur (ce qui faisait déborder et couper le bas des pages) */
+        .view > .activity-view,
+        .view > .limits-wrapper {
+            flex: 1 0 auto;
+            height: auto;
+            min-height: 0;
+        }
+
+        /* CORRECTION : la barre de navigation passe sous la progression et le chronomètre */
+        .view > .nav-row {
+            padding: 65px 20px 0 20px;
+            margin-bottom: 10px;
+        }
+        .activity-view > .nav-row:first-child {
+            padding-top: 40px;
+        }
+ 
+        .view.active {
+            opacity: 1;
+            visibility: visible;
+            transform: scale(1);
+            z-index: 10;
+            position: relative;
+        }
+ 
+        /* --- STYLE HERO --- */
+        .hero-section {
+            background-size: cover;
+            background-position: center;
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+ 
+        .hero-section h1 { font-size: 2rem; margin-bottom: 1rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .hero-subtitle { font-size: 1rem; font-style: italic; max-width: 800px; margin-bottom: 2rem; line-height: 1.5; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+        .cta-button {
+            background: var(--primary-color); color: white; padding: 12px 30px; border-radius: 30px;
+            font-size: 1rem; font-weight: 700; cursor: pointer; border: none;
+            transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
+            text-decoration: none;
+            display: inline-block;
+        }
+        .cta-button:hover { background: var(--primary-dark); transform: translateY(-2px); }
+ 
+        /* --- VUES ACTIVITÉS GENERIQUES --- */
+        .activity-view {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            justify-content: safe center; /* CORRECTION : si le contenu dépasse, il n'est plus coupé en haut */
+            height: 100%;
+        }
+
+        /* CORRECTION : la classe était utilisée sans style (sauf sur mobile) */
+        .activity-instructions {
+            max-width: 800px;
+            text-align: left;
+            line-height: 1.6;
+            font-size: 0.95rem;
+            color: #555;
+            background: var(--quiz-bg);
+            border-left: 4px solid var(--primary-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+ 
+        .nav-row {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 50;
+        }
+ 
+        .nav-link {
+            color: #7f8c8d;
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .nav-link:hover { color: var(--text-color); }
+ 
+        .view-title {
+            text-align: center;
+            font-size: 1.5rem;
+            color: var(--text-color);
+            margin-bottom: 20px;
+            flex-shrink: 0;
+        }
+ 
+        .video-thumbnail-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            cursor: pointer;
+            margin-bottom: 20px;
+            flex-shrink: 0;
+        }
+ 
+        .video-thumbnail-img {
+            width: 100%;
+            display: block;
+            transition: transform 0.5s ease;
+            height: 350px;
+            object-fit: cover;
+        }
+ 
+        .video-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.2);
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; transition: opacity 0.3s ease;
+        }
+ 
+        .video-thumbnail-container:hover .video-overlay { opacity: 1; }
+        .video-thumbnail-container:hover .video-thumbnail-img { transform: scale(1.03); }
+ 
+        .play-icon {
+            width: 80px; height: 80px; background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%; display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5); transform: scale(0.8); transition: transform 0.3s;
+        }
+ 
+        .video-thumbnail-container:hover .play-icon { transform: scale(1); }
+ 
+        .play-triangle {
+            width: 0; height: 0;
+            border-top: 15px solid transparent;
+            border-bottom: 15px solid transparent;
+            border-left: 25px solid var(--primary-color); margin-left: 5px;
+        }
+ 
+        #view-climat .play-triangle { border-left-color: var(--accent-climat); }
+ 
+        .caption { margin-top: 5px; text-align: center; font-size: 0.9rem; color: #7f8c8d; flex-shrink: 0; }
+        .next-btn {
+            margin-top: 15px;
+            background: var(--text-color); color: white; padding: 8px 20px;
+            border: none; border-radius: 20px; font-weight: 600; cursor: pointer;
+            transition: background 0.3s; font-size: 0.9rem; flex-shrink: 0;
+        }
+        .next-btn:hover { background: #34495e; }
+ 
+        /* --- GRILLE DE CHOIX --- */
+        .choices-grid {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+            flex: 1;
+            align-items: center;
+        }
+ 
+        .choice-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 45%;
+            height: auto;
+            justify-content: center;
+            padding: 10px;
+        }
+ 
+        .choice-img {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            margin-bottom: 15px;
+            transition: transform 0.3s ease;
+        }
+ 
+        .choice-card:hover .choice-img {
+            transform: translateY(-5px);
+        }
+ 
+        .choice-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-color);
+            text-align: center;
+            margin-bottom: 15px;
+            line-height: 1.3;
+            min-height: 2.6em;
+        }
+ 
+        .choice-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.3s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+ 
+        .choice-btn:hover {
+            background: var(--primary-dark);
+        }
+ 
+        /* --- NOUVEAU STYLE SLIDE LIMITES (MODIFIÉ) --- */
+        .limits-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start; /* Alignement en haut pour laisser de l'espace */
+            height: 100%;
+            width: 100%;
+            padding: 40px 20px;
+            background: radial-gradient(circle at center, #1a2a3a 0%, #000000 100%);
+            overflow-y: auto;
+        }
+ 
+        .earth-display {
+            position: relative;
+            width: 150px; /* Légèrement plus grand pour l'impact visuel */
+            height: 150px;
+            border-radius: 50%;
+            overflow: hidden;
+            box-shadow: 0 0 80px rgba(46, 204, 113, 0.6); /* Lueur accentuée */
+            border: 4px solid rgba(255, 255, 255, 0.9);
+            margin-bottom: 50px; /* Espace augmenté pour bien séparer de la ligne */
+            flex-shrink: 0;
+            background-color: #0055ff;
+            z-index: 2; /* Pour passer au-dessus si besoin */
+        }
+ 
+        .earth-display img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+ 
+        .limits-instruction {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            text-align: center;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+ 
+        .limits-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 25px; /* Espacement augmenté entre les icônes */
+            max-width: 1000px; /* Largeur suffisante pour tenir sur une ligne */
+            width: 100%;
+            padding-bottom: 20px;
+        }
+ 
+        .limit-item {
+            background: rgba(255, 255, 255, 0.95);
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--primary-color);
+            font-size: 1.4rem;
+            text-decoration: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Transition plus fluide */
+            position: relative;
+            z-index: 1;
+        }
+ 
+        .limit-item:hover {
+            transform: scale(1.2) translateY(-8px);
+            background: var(--primary-color);
+            color: white;
+            box-shadow: 0 10px 25px rgba(46, 204, 113, 0.7);
+            z-index: 10;
+        }
+ 
+        /* --- QUIZ --- */
+        #view-quiz { padding: 20px; display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+ 
+        /* MODIFICATION : Ajout de padding-top pour éviter que la barre de progression ne masque l'en-tête */
+        .quiz-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            padding-top: 50px; /* Ajout de cet espacement */
+            border-bottom: 2px solid #eee;
+            flex-shrink: 0;
+        }
+ 
+        .quiz-progress { font-weight: 700; color: var(--primary-color); font-size: 1rem; }
+        .quiz-content { flex: 1; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 700px; margin: 0 auto; overflow-y: auto; padding-right: 5px; }
+        .quiz-question-text { font-size: 1.1rem; font-weight: 600; text-align: center; margin-bottom: 10px; color: var(--text-color); flex-shrink: 0; }
+        .quiz-img { width: 100%; height: 180px; object-fit: cover; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); flex-shrink: 0; background-color: #ddd; }
+        .quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-bottom: 10px; flex-shrink: 0; }
+        .quiz-option-btn { padding: 12px; border: 2px solid #ddd; background: white; border-radius: 8px; cursor: pointer; font-family: var(--font-main); font-weight: 600; font-size: 0.9rem; transition: all 0.2s; text-align: center; }
+        .quiz-option-btn:hover { border-color: var(--primary-color); background: #f0fff4; }
+        .quiz-option-btn.correct { background: var(--primary-color); color: white; border-color: var(--primary-dark); }
+        .quiz-option-btn.wrong { background: #e74c3c; color: white; border-color: #c0392b; }
+        .quiz-explanation { background: #fff3cd; color: #856404; padding: 12px; border-radius: 8px; border-left: 5px solid #ffeeba; margin-bottom: 15px; width: 100%; opacity: 0; transform: translateY(10px); transition: all 0.3s ease; display: none; font-size: 0.85rem; }
+        .quiz-explanation.visible { opacity: 1; transform: translateY(0); display: block; }
+        .quiz-explanation strong { display: block; margin-bottom: 3px; text-transform: uppercase; font-size: 0.8rem; }
+        .quiz-nav { width: 100%; display: flex; justify-content: flex-end; flex-shrink: 0; margin-top: auto; }
+ 
+        /* --- RÉSULTATS --- */
+        #view-result { text-align: center; justify-content: center; align-items: center; background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%); }
+        .score-circle { width: 120px; height: 120px; background: var(--primary-color); color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 2.5rem; font-weight: 700; margin: 20px auto; box-shadow: 0 10px 20px rgba(46, 204, 113, 0.3); }
+        .result-msg { font-size: 1.2rem; margin-bottom: 30px; color: #555; }
+        .result-btn { background: var(--primary-dark); color: white; font-size: 1.1rem; padding: 15px 40px; border: none; border-radius: 30px; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.2); transition: transform 0.2s; }
+        .result-btn:hover { transform: scale(1.05); }
+ 
+        /* --- SOMMAIRE --- */
+        #view-sommaire { padding: 30px; overflow-y: auto; }
+        .sommaire-header { text-align: center; margin-bottom: 30px; padding-top: 40px; }
+        .sommaire-header h2 { color: var(--text-color); font-size: 2rem; }
+        .sommaire-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 900px; margin: 0 auto; }
+        .sommaire-card { background: white; border: 1px solid #eee; border-radius: 15px; padding: 25px; text-align: center; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 5px 15px rgba(0,0,0,0.05); transition: transform 0.3s; }
+        .sommaire-card:hover { transform: translateY(-5px); border-color: var(--primary-color); }
+        .sommaire-card h3 { font-size: 1.2rem; margin-bottom: 15px; color: var(--text-color); }
+        .sommaire-btn { background: var(--primary-color); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-top: auto; transition: background 0.3s; width: 100%; }
+        .sommaire-btn:hover { background: var(--primary-dark); }
+ 
+        /* --- STYLE SLIDE RSE VIDEOS (GRILLE) --- */
+        #view-rse-videos .videos-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+            align-items: center;
+            flex: 1;
+            overflow-y: auto;
+        }
+ 
+        .videos-grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            width: 100%;
+            padding: 0 20px;
+        }
+ 
+        /* --- STYLE SPECIFIQUE SLIDE RSE (IMAGE PLEINE PAGE) --- */
+        #view-rse {
+            display: flex;
+            flex-direction: column;
+        }
+ 
+        .fullscreen-img-wrapper {
+            flex: 1;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+ 
+        .fullscreen-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Changé en contain pour voir toute l'infographie, sinon elle risque d'être coupée en 'cover' */
+            object-position: center;
+        }
+ 
+        .rse-overlay-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 40px 20px;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+ 
+        /* --- CORRECTION SPÉCIFIQUE POUR ODD INTRO (SCROLL ACTIVÉ) --- */
+        #view-odd-intro .activity-view {
+            justify-content: flex-start;
+            overflow-y: auto;
+            padding-bottom: 50px;
+        }
+ 
+        /* --- CORRECTION SPÉCIFIQUE POUR ODD ACTIVITY --- */
+        #view-odd-activity .activity-view {
+            justify-content: flex-start;
+            overflow-y: auto;
+            padding-bottom: 50px;
+        }
+ 
+        #view-odd-activity .video-thumbnail-container {
+            margin-bottom: 15px;
+        }
+ 
+        /* --- AJOUT SPECIFIQUE POUR ODD MISSION PRIORITAIRE --- */
+        #view-odd-mission .activity-view {
+            justify-content: flex-start;
+            overflow-y: auto;
+            padding-bottom: 50px;
+        }
+ 
+        /* --- AJOUT SPECIFIQUE POUR ENIGME 1 (SCROLL ACTIVÉ) --- */
+        #view-enigme-1 .activity-view {
+            justify-content: flex-start;
+            overflow-y: auto;
+            padding-bottom: 50px;
+        }
+ 
+        /* --- AJOUT SPECIFIQUE POUR ENIGME 2 (SCROLL ACTIVÉ) --- */
+        #view-enigme-2 .activity-view {
+            justify-content: flex-start;
+            overflow-y: auto;
+            padding-bottom: 50px;
+        }
+ 
+        /* --- AJOUT SPECIFIQUE POUR ENIGME 3 (SCROLL ACTIVÉ) --- */
+        #view-enigme-3 .activity-view {
+            justify-content: flex-start;
+            overflow-y: auto;
+            padding-bottom: 50px;
+        }
+ 
+        /* --- AJOUT SPECIFIQUE POUR ENIGME FINAL (SCROLL ACTIVÉ) --- */
+        #view-enigme-final .activity-view {
+            justify-content: flex-start;
+            overflow-y: auto;
+            padding-bottom: 50px;
+        }
+ 
+        /* --- AJOUT SPECIFIQUE POUR NUMÉRIQUE (IMAGE PLEINE PAGE) --- */
+        #view-numerique-intro {
+            display: flex;
+            flex-direction: column;
+        }
+ 
+        .numerique-overlay-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 40px 20px;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+ 
+        /* --- STYLES POUR L'ATTESTATION (ADAPTÉ A4) --- */
+        #view-certificate {
+            background-color: #f4f7f6;
+            overflow-y: auto;
+            justify-content: flex-start;
+            padding: 40px;
+        }
+ 
+        .certificate-paper {
+            background: white;
+            width: 210mm; /* A4 width */
+            min-height: 297mm; /* A4 height */
+            margin: 0 auto;
+            /* MODIFICATION : Réduction du padding pour optimiser l'espace A4 */
+            padding: 12mm 20mm;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            border: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            color: #333;
+            page-break-after: avoid; /* Empêche le saut de page intempestif */
+        }
+ 
+        .cert-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--primary-color);
+            /* MODIFICATION : Réduction de l'espace */
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+ 
+        .cert-logos img {
+            max-height: 70px; /* Légèrement réduit pour l'équilibre */
+            object-fit: contain;
+        }
+ 
+        .cert-title {
+            text-align: center;
+            font-family: 'Poppins', sans-serif;
+            margin-bottom: 20px; /* MODIFICATION : Réduit */
+        }
+ 
+        .cert-title h1 {
+            color: var(--primary-dark);
+            font-size: 22px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+ 
+        .cert-title h2 {
+            font-size: 16px;
+            color: #7f8c8d;
+            font-weight: 400;
+        }
+ 
+        .cert-body {
+            flex-grow: 1;
+            font-size: 15px; /* MODIFICATION : Police légèrement réduite */
+            line-height: 1.5;
+            text-align: justify;
+        }
+ 
+        .cert-user-name {
+            text-align: center;
+            font-size: 26px;
+            font-weight: bold;
+            color: var(--text-color);
+            margin: 15px 0; /* MODIFICATION : Réduit */
+            text-transform: uppercase;
+            border-bottom: 1px solid #ddd;
+            display: inline-block;
+            padding: 0 20px 5px 20px;
+            min-width: 300px;
+        }
+ 
+        .cert-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            /* MODIFICATION : Espacements réduits pour tenir sur une page */
+            gap: 15px;
+            margin: 20px 0;
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+        }
+ 
+        .cert-item {
+            margin-bottom: 5px;
+        }
+ 
+        .cert-item strong {
+            color: var(--primary-dark);
+        }
+ 
+        .cert-themes {
+            margin-top: 15px; /* MODIFICATION : Réduit */
+        }
+        .cert-themes ul {
+            list-style: none;
+            padding: 0;
+        }
+        .cert-themes li {
+            background: #fff;
+            border-left: 4px solid var(--primary-color);
+            /* MODIFICATION : Espacements réduits */
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            font-size: 14px; /* MODIFICATION : Police légèrement réduite */
+        }
+ 
+        /* Suppression des styles de signature car ils sont supprimés du HTML */
+ 
+        .print-btn-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+ 
+        /* --- MODALE DE SAISIE --- */
+        #modal-input-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            display: none; /* Caché par défaut */
+            justify-content: center;
+            align-items: center;
+        }
+ 
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+ 
+        .modal-content h3 { margin-bottom: 20px; color: var(--text-color); }
+ 
+        .input-group { margin-bottom: 15px; text-align: left; }
+        .input-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; }
+        .input-group input {
+            width: 100%; padding: 10px;
+            border: 1px solid #ccc; border-radius: 5px;
+            font-family: var(--font-main);
+        }
+ 
+        /* --- CODES SECRETS (style jeu vidéo) --- */
+        #btn-code {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            z-index: 20;
+            background: rgba(255,255,255,0.15);
+            color: rgba(255,255,255,0.8);
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 20px;
+            padding: 5px 12px;
+            font-family: var(--font-main);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        #btn-code:hover { background: rgba(255,255,255,0.3); color: #fff; }
+
+        #modal-code-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 1000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+        #input-code {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.4rem;
+            font-weight: bold;
+            text-align: center;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+        #code-message { min-height: 1.4em; font-size: 0.85rem; margin-bottom: 10px; color: var(--accent-climat); }
+
+        /* --- IMPRESSION (PDF) --- */
+        @media print {
+            /* CORRECTION : le conteneur (90vh, overflow hidden) coupait l'attestation à l'impression */
+            html, body, .app-wrapper {
+                height: auto !important;
+                min-height: 0 !important;
+                overflow: visible !important;
+                display: block !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                box-shadow: none !important;
+                background: white !important;
+            }
+            .view:not(#view-certificate) {
+                display: none !important;
+            }
+            #view-certificate {
+                transform: none !important;
+            }
+            /* Masquer tout sauf l'attestation */
+            body * {
+                visibility: hidden;
+            }
+            #view-certificate, #view-certificate * {
+                visibility: visible;
+            }
+            #view-certificate {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                background: white;
+                overflow: visible;
+            }
+            .certificate-paper {
+                box-shadow: none;
+                border: none;
+                width: 100%;
+                margin: 0;
+                /* Assure que le padding est respecté à l'impression */
+                padding: 12mm 20mm !important;
+                page-break-after: avoid;
+                height: auto; /* Permet l'ajustement automatique */
+                min-height: 0; /* CORRECTION : évite une 2e page blanche */
+            }
+            .print-btn-container {
+                display: none;
+            }
+            /* Force l'impression des couleurs de fond */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            @page {
+                size: A4 portrait;
+                margin: 0;
+            }
+        }
+ 
+        /* --- RESPONSIVE --- */
+        @media (max-width: 600px) {
+            .quiz-options { grid-template-columns: 1fr; }
+            .quiz-question-text { font-size: 1rem; }
+            .quiz-img { height: 140px; }
+            .app-wrapper { height: 100vh; border-radius: 0; }
+            body { padding: 0; }
+            .sommaire-grid { grid-template-columns: 1fr; }
+            .sommaire-card { padding: 15px; }
+            .video-thumbnail-img { height: 200px; }
+            .activity-instructions { padding: 15px; font-size: 0.9rem; }
+            .choices-grid { flex-direction: column; gap: 20px; }
+            .choice-card { width: 100%; max-height: none; }
+            .choice-img { height: 180px; }
+            .limit-item { width: 60px; height: 60px; font-size: 1.2rem; }
+            .earth-display { width: 100px; height: 100px; }
+            .videos-grid-container { grid-template-columns: 1fr; }
+            .progress-container {
+                top: 60px;
+                width: 90%;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            .timer-badge { top: 10px; right: 10px; font-size: 0.8rem; }
+            .view > .nav-row { padding-top: 130px; }
+            .activity-view > .nav-row:first-child { padding-top: 95px; }
+            .sommaire-header { padding-top: 110px; }
+ 
+            /* Attestation responsive (non visible en impression) */
+            .certificate-paper {
+                width: 100%;
+                min-height: auto;
+                padding: 10px;
+            }
+        }
+
+        /* =====================================================================
+           VERSION MOBILE : couche d'adaptation téléphone (écran uniquement,
+           l'impression de l'attestation garde les règles A4 ci-dessus)
+           ===================================================================== */
+        @media screen {
+            :root {
+                --m-top-h: calc(56px + env(safe-area-inset-top));
+                --m-nav-h: calc(64px + env(safe-area-inset-bottom));
+            }
+
+            html, body { height: 100%; }
+            body {
+                padding: 0;
+                display: block;
+                overflow: hidden;
+                background: #1f2d3a;
+                -webkit-tap-highlight-color: transparent;
+            }
+
+            /* Application plein écran (centrée et limitée en largeur sur ordinateur) */
+            .app-wrapper {
+                position: fixed;
+                top: 0; bottom: 0; left: 0; right: 0;
+                width: 100%;
+                max-width: 520px;
+                height: 100%;
+                margin: 0 auto;
+                border-radius: 0;
+                box-shadow: 0 0 40px rgba(0,0,0,0.35);
+                --m-top: var(--m-top-h);
+                --m-bottom: 0px;
+            }
+            .app-wrapper.m-no-top { --m-top: 0px; }
+            .app-wrapper.m-has-nav { --m-bottom: var(--m-nav-h); }
+
+            /* Toutes les vues occupent l'espace entre la barre haute et la navigation basse */
+            .view, .view.active {
+                position: absolute;
+                top: var(--m-top);
+                bottom: var(--m-bottom);
+                left: 0; right: 0;
+                width: auto;
+                height: auto;
+                overscroll-behavior: contain;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            /* ---------- BARRE HAUTE ---------- */
+            .m-topbar {
+                position: absolute;
+                top: 0; left: 0; right: 0;
+                height: var(--m-top-h);
+                padding: env(safe-area-inset-top) 8px 0 4px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                background: var(--white);
+                border-bottom: 1px solid #eee;
+                z-index: 300;
+            }
+            .app-wrapper.m-no-top .m-topbar { display: none; }
+            .m-back {
+                width: 44px; height: 44px;
+                flex-shrink: 0;
+                border: none;
+                background: none;
+                border-radius: 50%;
+                color: var(--text-color);
+                font-size: 1.15rem;
+                cursor: pointer;
+            }
+            .m-back:active { background: #f0f0f0; }
+            .m-center { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+            .m-title {
+                font-size: 0.9rem;
+                font-weight: 700;
+                color: var(--text-color);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .m-topbar .progress-container {
+                position: static;
+                transform: none;
+                width: auto;
+                padding: 0;
+                gap: 8px;
+                background: none;
+                border: none;
+                box-shadow: none;
+                backdrop-filter: none;
+                font-size: 0.7rem;
+                color: #7f8c8d;
+                flex-wrap: nowrap;
+            }
+            .m-topbar .progress-container > span:first-child,
+            .m-topbar #btn-unlock { display: none !important; }
+            .m-topbar .progress-bar-bg { flex: 1; width: auto; height: 6px; }
+            .m-topbar .timer-badge {
+                position: static;
+                flex-shrink: 0;
+                font-size: 0.75rem;
+                padding: 4px 9px;
+                box-shadow: none;
+            }
+
+            /* ---------- NAVIGATION BASSE ---------- */
+            .m-bottomnav {
+                position: absolute;
+                left: 0; right: 0; bottom: 0;
+                height: var(--m-nav-h);
+                padding-bottom: env(safe-area-inset-bottom);
+                display: none;
+                background: var(--white);
+                border-top: 1px solid #eee;
+                z-index: 300;
+            }
+            .app-wrapper.m-has-nav .m-bottomnav { display: flex; }
+            .m-tab {
+                flex: 1;
+                border: none;
+                background: none;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+                font-family: var(--font-main);
+                font-size: 0.7rem;
+                font-weight: 600;
+                color: #95a5a6;
+                cursor: pointer;
+                position: relative;
+            }
+            .m-tab i { font-size: 1.2rem; }
+            .m-tab.active { color: var(--primary-dark); }
+            .m-tab.locked { opacity: 0.45; }
+            .m-tab .m-lock { position: absolute; top: 8px; right: calc(50% - 22px); font-size: 0.6rem; }
+
+            /* ---------- MESSAGES ÉPHÉMÈRES ---------- */
+            .m-toast {
+                position: absolute;
+                left: 50%;
+                bottom: calc(var(--m-bottom) + 16px);
+                transform: translate(-50%, 20px);
+                width: max-content;
+                max-width: calc(100% - 32px);
+                background: rgba(44, 62, 80, 0.95);
+                color: #fff;
+                padding: 12px 18px;
+                border-radius: 12px;
+                font-size: 0.85rem;
+                font-weight: 600;
+                text-align: center;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.3s, transform 0.3s;
+                z-index: 400;
+            }
+            .m-toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+            /* ---------- NAVIGATION D'ORIGINE : remplacée par la barre haute ---------- */
+            .nav-row,
+            .sommaire-header > .nav-link,
+            .quiz-header > .nav-link { display: none !important; }
+
+            /* ---------- ÉLÉMENTS GÉNÉRAUX ---------- */
+            .activity-view {
+                padding: 16px 16px 24px;
+                justify-content: flex-start;
+            }
+            .view-title { font-size: 1.2rem; margin-bottom: 14px; line-height: 1.35; }
+            .caption { margin-bottom: 4px; }
+
+            .cta-button, .next-btn, .choice-btn, .sommaire-btn, .result-btn {
+                min-height: 48px;
+                font-size: 1rem;
+                touch-action: manipulation;
+            }
+            .next-btn { padding: 12px 22px; border-radius: 25px; }
+            .next-btn:disabled { opacity: 0.45; cursor: default; }
+            .activity-view .cta-button,
+            .activity-view .next-btn {
+                width: 100%;
+                max-width: 420px;
+                text-align: center;
+            }
+            /* Les rangées de 2 boutons passent en colonne */
+            .activity-view > div[style*="display: flex"] {
+                flex-direction: column !important;
+                align-items: center !important;
+                gap: 12px !important;
+                margin-top: 0 !important;
+            }
+            /* Blocs de texte : marges adaptées au téléphone */
+            .activity-view > div[style*="max-width: 800px"] { padding: 0 !important; font-size: 0.92rem !important; }
+            .activity-instructions { padding: 16px; font-size: 0.92rem; }
+
+            /* Pas d'effets de survol sur écran tactile */
+            .cta-button:hover, .result-btn:hover, .sommaire-card:hover,
+            .choice-card:hover .choice-img, .limit-item:hover,
+            .video-thumbnail-container:hover .video-thumbnail-img { transform: none; }
+
+            /* Vignettes vidéo : bouton lecture toujours visible */
+            .video-thumbnail-container { margin-bottom: 14px; border-radius: 12px; }
+            .video-thumbnail-img { height: 200px; }
+            .video-overlay { opacity: 1; background: rgba(0,0,0,0.15); }
+            .play-icon { width: 60px; height: 60px; transform: none; }
+            .play-triangle { border-top-width: 11px; border-bottom-width: 11px; border-left-width: 18px; }
+
+            /* ---------- ACCUEIL ---------- */
+            #view-home > img {
+                width: 72px !important;
+                top: calc(16px + env(safe-area-inset-top)) !important;
+            }
+            #view-home > img[alt="Logo Hauts-de-France"] { left: 16px !important; }
+            #view-home > img[alt="Logo GRETA"] { right: 16px !important; }
+            .hero-section { padding: 100px 20px 40px; }
+            .hero-section h1 { font-size: 1.6rem; }
+            .hero-subtitle { font-size: 0.95rem; }
+            .hero-section .cta-button { width: 100%; max-width: 320px; }
+            #btn-code { bottom: calc(15px + env(safe-area-inset-bottom)); }
+            #view-quiz-intro .hero-section h1 { font-size: 1.35rem; }
+            #view-quiz-intro .hero-subtitle { font-size: 0.95rem !important; }
+
+            /* ---------- QUIZ ---------- */
+            #view-quiz { padding: 0 16px; height: auto; }
+            .quiz-header { padding: 10px 0; justify-content: center; margin-bottom: 8px; }
+            .quiz-content { padding-right: 0; min-height: 0; }
+            .quiz-img { height: 150px; }
+            .quiz-options { grid-template-columns: 1fr; gap: 10px; }
+            .quiz-option-btn { padding: 15px; font-size: 1rem; min-height: 52px; border-radius: 12px; }
+            .quiz-option-btn:hover { background: white; border-color: #ddd; }
+            .quiz-option-btn.correct:hover { background: var(--primary-color); }
+            .quiz-option-btn.wrong:hover { background: #e74c3c; }
+            .quiz-nav {
+                position: sticky;
+                bottom: 0;
+                padding: 12px 0 calc(12px + env(safe-area-inset-bottom));
+                background: linear-gradient(rgba(255,255,255,0), #fff 35%);
+            }
+            .quiz-nav .next-btn { width: 100%; }
+
+            /* ---------- RÉSULTAT ---------- */
+            #view-result { padding: 24px 16px; }
+            #view-result h1 { font-size: 1.5rem; }
+            .score-circle { width: 110px; height: 110px; font-size: 2.2rem; }
+            .result-msg { font-size: 1.05rem; }
+            .result-btn { width: 100%; max-width: 360px; padding: 14px 20px; }
+
+            /* ---------- SOMMAIRE ---------- */
+            #view-sommaire { padding: 16px; }
+            .sommaire-header { padding-top: 4px; margin-bottom: 16px; }
+            .sommaire-header h2 { font-size: 1.4rem; }
+            .sommaire-grid { grid-template-columns: 1fr; gap: 12px; }
+            .sommaire-card { padding: 16px; text-align: left; position: relative; border-radius: 14px; }
+            .sommaire-card h3 { font-size: 1.05rem; margin-bottom: 6px; padding-right: 90px; }
+            .sommaire-card p { margin-bottom: 12px !important; }
+            .sommaire-card.m-completed { border-color: var(--primary-color); background: #f0fff4; }
+            .m-badge {
+                position: absolute;
+                top: 14px; right: 14px;
+                font-size: 0.7rem;
+                font-weight: 700;
+                padding: 3px 9px;
+                border-radius: 12px;
+                background: #eee;
+                color: #7f8c8d;
+            }
+            .sommaire-card.m-completed .m-badge { background: var(--primary-color); color: #fff; }
+            .m-summary {
+                text-align: center;
+                font-size: 0.85rem;
+                font-weight: 600;
+                color: var(--primary-dark);
+                margin: -6px 0 16px;
+            }
+            .m-final-cta {
+                display: none;
+                width: 100%;
+                margin-top: 16px;
+                background: var(--accent-action);
+            }
+
+            /* ---------- CHOIX FONDAMENTAUX ---------- */
+            .choices-grid { flex-direction: column; gap: 16px; padding: 16px; flex: 0 0 auto; }
+            .choice-card { width: 100%; padding: 0; }
+            .choice-img { height: 160px; margin-bottom: 10px; }
+            .choice-title { min-height: 0; margin-bottom: 10px; }
+
+            /* ---------- LIMITES PLANÉTAIRES : icônes légendées ---------- */
+            .limits-wrapper { padding: 24px 16px 32px; }
+            .earth-display { width: 110px; height: 110px; margin-bottom: 24px; }
+            .limits-instruction { font-size: 0.95rem; margin-bottom: 24px; }
+            .limits-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 34px 12px;
+                justify-items: center;
+                padding-bottom: 28px;
+            }
+            .limit-item { width: 64px; height: 64px; font-size: 1.3rem; }
+            .limit-item::after {
+                content: attr(title);
+                position: absolute;
+                top: 100%;
+                margin-top: 6px;
+                font-size: 0.72rem;
+                font-weight: 600;
+                color: rgba(255,255,255,0.9);
+                white-space: nowrap;
+            }
+
+            /* ---------- IMAGES PLEINE PAGE (RSE, NUMÉRIQUE) ---------- */
+            .fullscreen-img { cursor: zoom-in; }
+            .m-zoom-hint {
+                position: absolute;
+                top: 10px; right: 10px;
+                background: rgba(44,62,80,0.85);
+                color: #fff;
+                font-size: 0.72rem;
+                font-weight: 600;
+                padding: 5px 10px;
+                border-radius: 14px;
+                pointer-events: none;
+            }
+            .rse-overlay-content, .numerique-overlay-content { padding: 30px 16px 16px; }
+            .rse-overlay-content .cta-button, .numerique-overlay-content .cta-button { width: 100%; max-width: 360px; }
+
+            /* ---------- VIDÉOS RSE ---------- */
+            #view-rse-videos { padding-top: 16px; }
+            .videos-grid-container { grid-template-columns: 1fr; padding: 0 16px; gap: 0; }
+            #view-rse-videos .video-thumbnail-img { height: 180px; }
+
+            /* ---------- ENGAGEMENTS : texte sous l'image ---------- */
+            #view-engagements .fullscreen-img-wrapper { flex: 0 0 auto; overflow: visible; }
+            #view-engagements .fullscreen-img { height: 36vh; display: block; }
+            #view-engagements .numerique-overlay-content { position: static; background: #fff; padding: 16px 16px 24px; }
+            #view-engagements .numerique-overlay-content h2,
+            #view-engagements .numerique-overlay-content p {
+                color: var(--text-color) !important;
+                text-shadow: none !important;
+                font-size: 1rem !important;
+                margin-bottom: 14px !important;
+            }
+            #view-engagements .numerique-overlay-content h2 { font-size: 1.2rem !important; }
+            #view-engagements .numerique-overlay-content > div > div[style*="margin-top: 30px"] { margin-top: 16px !important; }
+            #view-engagements .numerique-overlay-content .next-btn {
+                background: var(--text-color) !important;
+                border: none !important;
+            }
+
+            /* ---------- BLOC « MODULE VALIDÉ » ---------- */
+            .m-module-done {
+                margin: 8px 16px 24px;
+                padding: 16px;
+                border-radius: 14px;
+                background: #f0fff4;
+                border: 2px solid var(--primary-color);
+                text-align: center;
+                flex-shrink: 0;
+            }
+            .m-module-done p { font-weight: 700; color: var(--primary-dark); margin-bottom: 10px; font-size: 0.95rem; }
+            .m-module-done .next-btn { width: 100%; margin-top: 0; background: var(--primary-dark); }
+            #view-limits .m-module-done { margin: 0; border-radius: 0; border-width: 2px 0 0; }
+
+            /* ---------- ATTESTATION (lecture à l'écran) ---------- */
+            #view-certificate { padding: 16px 12px calc(16px + env(safe-area-inset-bottom)); }
+            .print-btn-container { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+            .print-btn-container .next-btn { margin: 0 !important; }
+            .certificate-paper { width: 100%; min-height: 0; padding: 18px 16px; }
+            .cert-logos img { max-height: 48px !important; }
+            .cert-title h1 { font-size: 18px; }
+            .cert-title h2 { font-size: 14px; }
+            .cert-body { font-size: 14px; text-align: left; }
+            .cert-user-name { display: block; min-width: 0; font-size: 20px; padding: 0 0 5px; }
+            .cert-grid { grid-template-columns: 1fr; gap: 8px; }
+
+            /* ---------- MODALES ---------- */
+            .modal-content { width: calc(100% - 32px); padding: 24px 20px; border-radius: 16px; }
+            .input-group input { padding: 14px; font-size: 16px; } /* 16px : évite le zoom auto sur iPhone */
+            #input-code { font-size: 1.4rem; }
+        }
+    </style>
+</head>
+<body>
+ 
+    <div class="app-wrapper m-no-top">
+
+        <!-- MOBILE : BARRE HAUTE (retour + titre + progression + chrono) -->
+        <header class="m-topbar">
+            <button class="m-back" onclick="mobileBack()" aria-label="Retour"><i class="fa-solid fa-arrow-left"></i></button>
+            <div class="m-center">
+                <div class="m-title" id="m-title">Développement durable</div>
+
+        <!-- PROGRESSION (HAUT CENTRE + BOUTON CACHÉ) -->
+        <div class="progress-container">
+            <span>Progression : </span>
+            <div class="progress-bar-bg">
+                <div id="progress-fill" class="progress-bar-fill"></div>
+            </div>
+            <span id="progress-text">0%</span>
+            <!-- Bouton caché qui apparaît à 100% -->
+            <button id="btn-unlock" onclick="switchView('view-engagements')">Vos engagements et éléments retenus</button>
+        </div>
+            </div><!-- fin .m-center -->
+
+        <!-- CHRONOMÈTRE -->
+        <div class="timer-badge">
+            <span class="timer-icon">⏱</span>
+            <span id="timer-display">00:00:00</span>
+        </div>
+        </header>
+
+        <!-- MOBILE : NAVIGATION BASSE -->
+        <nav class="m-bottomnav">
+            <button class="m-tab" id="m-tab-home" onclick="mobileTab('home')"><i class="fa-solid fa-house"></i>Accueil</button>
+            <button class="m-tab" id="m-tab-sommaire" onclick="mobileTab('sommaire')"><i class="fa-solid fa-layer-group"></i>Modules</button>
+            <button class="m-tab locked" id="m-tab-fin" onclick="mobileTab('fin')"><i class="fa-solid fa-seedling"></i>Engagements<span class="m-lock">🔒</span></button>
+        </nav>
+
+        <!-- MOBILE : MESSAGE ÉPHÉMÈRE -->
+        <div class="m-toast" id="m-toast"></div>
+
+        <!-- VUE 1 : ACCUEIL (MODIFIÉE AVEC IMAGES) -->
+        <div id="view-home" class="view active">
+            <!-- IMAGE HAUT GAUCHE (Style inline ajouté) - URL INTÉGRÉE -->
+            <img src="https://z-cdn-media.chatglm.cn/files/d8deaf22-4d6a-4fec-9711-9d720b45ac93.png?auth_key=1871684151-de1f01a71c674a8d84ceddaec254b9bf-0-25cf3419d2ef34bfb682d1d003e8f3ad" alt="Logo Hauts-de-France" style="position: absolute; top: 20px; left: 20px; width: 100px; z-index: 10; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+ 
+            <!-- IMAGE HAUT DROITE (Style inline ajouté) - URL INTÉGRÉE -->
+            <img src="https://z-cdn-media.chatglm.cn/files/14b8043a-a7bd-4554-a702-7205611c9ef2.jpg?auth_key=1871684151-b45846585f434a60a5eac478b19b1908-0-b7e9e7f2213ea65dafdb1f810d3d90dd" alt="Logo GRETA" style="position: absolute; top: 20px; right: 20px; width: 100px; z-index: 10; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+ 
+            <header class="hero-section" style="background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.6)), url('https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=2070&auto=format&fit=crop'); background-size: cover;">
+                <h1>Développement Durable</h1>
+                <p class="hero-subtitle">"Comprendre l'urgence, choisir ses solutions : Embarquez pour une immersion au cœur des enjeux de demain."</p>
+                <button class="cta-button" onclick="switchView('view-dd')">Commencer l'activité</button>
+                <!-- CORRECTION : accès direct au sommaire une fois le quiz diagnostic fait (évite de refaire le quiz) -->
+                <button id="btn-home-sommaire" class="cta-button" onclick="switchView('view-sommaire')" style="display: none; margin-top: 15px; background: rgba(255,255,255,0.2); border: 1px solid white; box-shadow: none;">Reprendre au sommaire</button>
+            </header>
+            <!-- CODES SECRETS : bouton discret (utile sur tablette / mobile, sans clavier physique) -->
+            <button id="btn-code" onclick="openCodeModal()" title="Saisir un code">🔑 Code</button>
+        </div>
+ 
+        <!-- VUE 2 : DÉFINITION -->
+        <div id="view-dd" class="view">
+            <div class="activity-view">
+                <div class="nav-row">
+                    <div class="nav-link" onclick="switchView('view-home')">&larr; Retour</div>
+                    <span style="color:#bdc3c7; font-size:0.9rem;">Étape 1/3</span>
+                </div>
+                <h2 class="view-title">Le Développement Durable, Qu'est-ce que c'est ?</h2>
+                <a href="https://www.youtube.com/watch?v=x4c9tIE8BNQ" target="_blank" class="video-thumbnail-container">
+                    <img src="https://images.unsplash.com/photo-1466611653911-95081537e5b7?q=80&w=2070&auto=format&fit=crop" alt="Énergie renouvelable" class="video-thumbnail-img">
+                    <div class="video-overlay"><div class="play-icon"><div class="play-triangle"></div></div></div>
+                </a>
+                <p class="caption">Découvrir les solutions durables.</p>
+                <button class="next-btn" onclick="switchView('view-climat')">Suite : L'urgence climatique &rarr;</button>
+            </div>
+        </div>
+ 
+        <!-- VUE 3 : CLIMAT -->
+        <div id="view-climat" class="view">
+            <div class="activity-view">
+                <div class="nav-row">
+                    <div class="nav-link" onclick="switchView('view-dd')">&larr; Précédent</div>
+                    <span style="color:#bdc3c7; font-size:0.9rem;">Étape 2/3</span>
+                </div>
+                <h2 class="view-title climat">Le constat et les chiffres de l'état d'urgence climatique</h2>
+                <a href="https://www.youtube.com/watch?v=jg4y1XzuqQk" target="_blank" class="video-thumbnail-container">
+                    <img src="https://images.unsplash.com/photo-1611273426858-450d8e3c9fce?q=80&w=2070&auto=format&fit=crop" alt="Sécheresse" class="video-thumbnail-img">
+                    <div class="video-overlay"><div class="play-icon"><div class="play-triangle"></div></div></div>
+                </a>
+                <p class="caption">Comprendre la réalité du terrain.</p>
+                <button class="next-btn" onclick="switchView('view-test')">Suite : Faites le test &rarr;</button>
+            </div>
+        </div>
+ 
+        <!-- VUE 4 : ACTION / TEST -->
+        <div id="view-test" class="view">
+            <div class="activity-view">
+                <div class="nav-row">
+                    <div class="nav-link" onclick="switchView('view-climat')">&larr; Précédent</div>
+                    <span style="color:#bdc3c7; font-size:0.9rem;">Étape 3/3</span>
+                </div>
+                <h2 class="view-title action">Et vous, où en êtes-vous ?</h2>
+                <a href="https://nosgestesclimat.fr/" target="_blank" class="video-thumbnail-container">
+                    <img src="https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?q=80&w=2070&auto=format&fit=crop" alt="Action" class="video-thumbnail-img">
+                    <div class="video-overlay"><div class="play-icon"><div class="play-triangle"></div></div></div>
+                </a>
+                <p class="caption">Calculez votre impact climatique.</p>
+                <button class="next-btn" onclick="switchView('view-quiz-intro')" style="background-color: var(--accent-action);">Passer au Quiz &rarr;</button>
+            </div>
+        </div>
+ 
+        <!-- VUE 5 : INTRODUCTION QUIZ -->
+        <div id="view-quiz-intro" class="view">
+            <div class="hero-section" style="background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7)), url('https://images.unsplash.com/photo-1531482615713-2afd69097998?q=80&w=2070&auto=format&fit=crop'); background-size: cover;">
+                <h1>Quiz de diagnostic : 10 questions sur les idées reçues</h1>
+                <p class="hero-subtitle" style="font-style: normal; font-size: 1.1rem; line-height: 1.6;">
+                    Prêt à bousculer vos certitudes ?<br><br>
+                    Avant de plonger dans le vif du sujet, testez vos connaissances avec ce défi en 10 questions : saurez-vous débusquer les idées reçues qui se cachent derrière le développement durable ?
+                </p>
+                <button class="cta-button" onclick="startQuiz()">Démarrer le Quiz</button>
+            </div>
+        </div>
+ 
+        <!-- VUE 6 : QUIZ (QUESTIONS) -->
+        <div id="view-quiz" class="view"> <!-- Ajout de la classe 'view-final-quiz' pour le masquage de la barre de progression -->
+            <div class="quiz-header">
+                <div class="nav-link" onclick="abandonQuiz()">&larr; Abandonner</div>
+                <div class="quiz-progress">Question <span id="q-current">1</span>/10</div>
+            </div>
+            <div class="quiz-content">
+                <h3 class="quiz-question-text" id="q-text">Chargement...</h3>
+                <img src="" alt="Image Question" class="quiz-img" id="q-img" onerror="if (this.dataset.fallback !== '1') { this.dataset.fallback = '1'; this.src='https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=800&auto=format&fit=crop'; }">
+                <div class="quiz-options" id="q-options"></div>
+                <div class="quiz-explanation" id="q-explanation">
+                    <strong>Explication :</strong>
+                    <span id="q-explanation-text"></span>
+                </div>
+                <div class="quiz-nav">
+                    <button class="next-btn" id="q-next-btn" onclick="nextQuestion()" disabled>Suivant &rarr;</button>
+                </div>
+            </div>
+        </div>
+ 
+        <!-- VUE 7 : RÉSULTAT -->
+        <div id="view-result" class="view">
+            <h1 style="color: var(--text-color); margin-bottom: 10px;">Quiz Terminé !</h1>
+            <p style="color: #7f8c8d;">Voici votre performance.</p>
+            <div class="score-circle" id="final-score">0/10</div>
+            <p class="result-msg" id="result-message">Analyse en cours...</p>
+            <button class="result-btn" id="btn-result-action">Action</button>
+        </div>
+ 
+        <!-- VUE 8 : SOMMAIRE -->
+        <div id="view-sommaire" class="view">
+            <div class="sommaire-header">
+                <div class="nav-link" onclick="switchView('view-home')" style="position:absolute; left: 30px; top: 30px;">&larr; Accueil</div>
+                <h2>Sommaire des Modules</h2>
+                <p style="color: #7f8c8d; margin-top: 5px;">Approfondissez vos connaissances</p>
+            </div>
+            <div class="sommaire-grid">
+                <div class="sommaire-card">
+                    <h3>Les Fondamentaux</h3>
+                    <p style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">Comprendre les bases du développement durable et les enjeux planétaires.</p>
+                    <button class="sommaire-btn" onclick="switchView('view-fondamentaux-choices')">Démarrer</button>
+                </div>
+                <div class="sommaire-card">
+                    <h3>Les ODD - Mission Exploration</h3>
+                    <p style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">Découvrez les 17 Objectifs de Développement Durable de l'ONU.</p>
+                    <button class="sommaire-btn" onclick="switchView('view-odd-intro')">Démarrer</button>
+                </div>
+                <div class="sommaire-card">
+                    <h3>La RSE en Action</h3>
+                    <p style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">Responsabilité Sociétale des Entreprises : exemples concrets.</p>
+                    <button class="sommaire-btn" onclick="switchView('view-rse')">Démarrer</button>
+                </div>
+                <div class="sommaire-card">
+                    <h3>Le Numérique et l'Environnement</h3>
+                    <p style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">Analysez l'impact écologique du digital et du cloud.</p>
+                    <button class="sommaire-btn" onclick="switchView('view-numerique-intro')">Démarrer</button>
+                </div>
+            </div>
+        </div>
+ 
+        <!-- VUE 8.5 : CHOIX FONDAMENTAUX -->
+        <div id="view-fondamentaux-choices" class="view">
+            <div class="nav-row">
+                <div class="nav-link" onclick="switchView('view-sommaire')">&larr; Sommaire</div>
+            </div>
+ 
+            <div class="choices-grid">
+                <div class="choice-card">
+                    <img src="https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?q=80&w=800&auto=format&fit=crop" alt="Les 3 piliers" class="choice-img">
+                    <div class="choice-title">Les 3 piliers de l'écologie et du développement durable</div>
+                    <button class="choice-btn" onclick="switchView('view-fondamentaux-video')">Accéder au module</button>
+                </div>
+ 
+                <div class="choice-card">
+                    <img src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800&auto=format&fit=crop" alt="Limites du monde" class="choice-img">
+                    <div class="choice-title">Au cœur des limites du monde</div>
+                    <button class="choice-btn" onclick="switchView('view-limits')">Naviguez au cœur des limites</button>
+                </div>
+            </div>
+        </div>
+ 
+        <!-- VUE 9 : FONDAMENTAUX - VIDÉO -->
+        <div id="view-fondamentaux-video" class="view">
+            <div class="nav-row">
+                <div class="nav-link" onclick="switchView('view-fondamentaux-choices')">&larr; Retour aux choix</div>
+                <span style="color:#bdc3c7; font-size:0.9rem;">Module 1/2</span>
+            </div>
+ 
+            <div class="activity-view centered-content">
+                <h2 class="view-title">Les Fondamentaux</h2>
+ 
+                <a href="https://www.youtube.com/watch?v=VAPfpaTwp_A" target="_blank" class="video-thumbnail-container">
+                    <img src="https://images.unsplash.com/photo-1497436072909-60f360e1d4b1?q=80&w=800&auto=format&fit=crop" alt="Vidéo Fondamentaux" class="video-thumbnail-img">
+                    <div class="video-overlay">
+                        <div class="play-icon"><div class="play-triangle"></div></div>
+                    </div>
+                </a>
+ 
+                <button class="next-btn" onclick="switchView('view-fondamentaux-activity')" style="background-color: var(--accent-action);">Passer à l'exercice &rarr;</button>
+            </div>
+        </div>
+ 
+        <!-- VUE 10 : FONDAMENTAUX - ACTIVITÉ -->
+        <div id="view-fondamentaux-activity" class="view">
+            <div class="nav-row">
+                <div class="nav-link" onclick="switchView('view-fondamentaux-video')">&larr; Retour Vidéo</div>
+                <div class="nav-link" onclick="switchView('view-fondamentaux-choices')">Choix du module</div>
+            </div>
+ 
+            <div class="activity-view centered-content">
+                <h2 class="view-title">Exercice : Les 3 Piliers</h2>
+ 
+                <div class="activity-instructions">
+                    <strong>Consigne :</strong><br>
+                    Classe les différentes étiquettes dans le bon cercle en les faisant glisser : Économie, Social ou Environnement.<br><br>
+                    Lis attentivement chaque terme, réfléchis à ce qu'il représente, puis dépose‑le dans la catégorie qui lui correspond.<br><br>
+                    Quand tu as terminé, utilise le bouton <strong>Vérifier</strong> pour voir ton score, puis <strong>Réinitialiser</strong> si tu veux recommencer.<br><br>
+                    <em>Objectif : comprendre les trois piliers ESG et identifier les notions qui s'y rattachent.</em>
+                </div>
+ 
+                <a href="https://francoismog.github.io/DevDU_Les_Fondamentaux/" target="_blank" class="cta-button">
+                    Lancer l'Exercice
+                </a>
+            </div>
+        </div>
+ 
+        <!-- NOUVELLE VUE 8.6 : LIMITES DU MONDE (MISE EN PAGE AMÉLIORÉE) -->
+        <div id="view-limits" class="view">
+            <div class="nav-row">
+                <div class="nav-link" onclick="switchView('view-fondamentaux-choices')">&larr; Retour aux choix</div>
+            </div>
+ 
+            <div class="limits-wrapper">
+ 
+                <!-- Terre au centre -->
+                <div class="earth-display">
+                    <img src="./images/terre.png" alt="Terre durable" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800&auto=format&fit=crop';">
+                </div>
+ 
+                <div class="limits-instruction">
+                    Explorez les limites planétaires
+                </div>
+ 
+                <!-- Grille des liens : Icônes en ligne centrées en dessous -->
+                <div class="limits-grid">
+                    <a href="https://www.youtube.com/watch?v=p0lt_pxxh00" target="_blank" class="limit-item" title="Chaleur"><i class="fa-solid fa-temperature-high"></i></a>
+                    <a href="https://www.youtube.com/watch?v=24dz9ee3LAQ" target="_blank" class="limit-item" title="Eau"><i class="fa-solid fa-water"></i></a>
+                    <a href="https://www.youtube.com/watch?v=BsgCzH1D-6g" target="_blank" class="limit-item" title="Forêts"><i class="fa-solid fa-tree"></i></a>
+                    <a href="https://www.youtube.com/watch?v=t9f39nukKBY" target="_blank" class="limit-item" title="Industrie"><i class="fa-solid fa-industry"></i></a>
+                    <a href="https://www.youtube.com/watch?v=wcwJbja2dbg" target="_blank" class="limit-item" title="Pollution"><i class="fa-solid fa-smog"></i></a>
+                    <a href="https://www.youtube.com/watch?v=U9iufkH-FZU" target="_blank" class="limit-item" title="Santé"><i class="fa-solid fa-skull-crossbones"></i></a>
+                    <a href="https://www.youtube.com/watch?v=o0_KQnArHZY" target="_blank" class="limit-item" title="Transports"><i class="fa-solid fa-truck-monster"></i></a>
+                    <a href="https://www.youtube.com/watch?v=cP5VoBuEL18" target="_blank" class="limit-item" title="Énergie"><i class="fa-solid fa-bolt"></i></a>
+                    <a href="https://www.youtube.com/watch?v=RD13xk5j-Ag" target="_blank" class="limit-item" title="Océans"><i class="fa-solid fa-fish"></i></a>
+                </div>
+            </div>
+        </div>
+ 
+        <!-- NOUVELLE VUE 11 : RSE EN ACTION (IMAGE PLEINE PAGE) -->
+        <div id="view-rse" class="view">
+            <div class="nav-row">
+                <div class="nav-link" onclick="switchView('view-sommaire')">&larr; Sommaire</div>
+                <span style="color:#bdc3c7; font-size:0.9rem;">Module RSE</span>
+            </div>
+ 
+            <!-- Wrapper pour l'image plein page -->
+            <div class="fullscreen-img-wrapper">
+                <!-- IMAGE PLEINE PAGE - URL INTÉGRÉE -->
+                <img src="https://z-cdn-media.chatglm.cn/files/dc009ba1-f855-44d4-ac39-38f994c98256.png?auth_key=1871687208-f04124e1554d453490e71464b007fce7-0-97b813322d475d28adf458a56b42822c" alt="RSE Infographie" class="fullscreen-img">
+ 
+                <!-- Overlay pour le bouton -->
+                <div class="rse-overlay-content">
+                    <!-- BOUTON MODIFIÉ : OUVRIR LA SLIDE DES VIDEOS -->
+                    <button class="cta-button" onclick="switchView('view-rse-videos')">
+                        Découvrir les vidéos &rarr;
+                    </button>
+                </div>
+            </div>
+        </div>
+ 
+        <!-- NOUVELLE VUE 12 : RSE VIDÉOS (3 VIDEOS) -->
+        <div id="view-rse-videos" class="view">
+            <div class="nav-row">
+                <!-- BOUTON RETOUR CORRIGÉ (SUPPRESSION DU ONCLICK="BLANK") -->
+                <div class="nav-link" onclick="switchView('view-rse')">&larr; Retour</div>
+                <span style="color:#bdc3c7; font-size:0.9rem;">Module RSE - Vidéos</span>
+            </div>
+ 
+            <!-- TITRE AJOUTÉ -->
+            <h2 class="view-title">exemples de pratique RSE en entreprise</h2>
+ 
+            <!-- CONTENU SCROLLABLE POUR LES 3 VIDÉOS -->
+            <div class="videos-grid-container">
+                <!-- Vidéo 1 : Éthique et Social -->
+                <a href="https://www.youtube.com/watch?v=ysqAWnJ7NnM" target="_blank" class="video-thumbnail-container">
+                    <img src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?q=80&w=600&auto=format&fit=crop" alt="RSE Éthique" class="video-thumbnail-img">
+                    <div class="video-overlay"><div class="play-icon"><div class="play-triangle"></div></div></div>
+                </a>
+ 
+                <!-- Vidéo 2 : Environnement et Recyclage -->
+                <a href="https://www.youtube.com/watch?v=GLrFgIKHQMY" target="_blank" class="video-thumbnail-container">
+                    <img src="https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?q=80&w=600&auto=format&fit=crop" alt="RSE Environnement" class="video-thumbnail-img">
+                    <div class="video-overlay"><div class="play-icon"><div class="play-triangle"></div></div></div>
+                </a>
+ 
+                <!-- Vidéo 3 : Équité et Équipe -->
+                <a href="https://www.youtube.com/watch?v=Sm6EUN7ZFuo" target="_blank" class="video-thumbnail-container">
+                    <img src="https://images.unsplash.com/photo-1511632765486-a01980e01a18?q=80&w=600&auto=format&fit=crop" alt="RSE Équipe" class="video-thumbnail-img">
+                    <div class="video-overlay"><div class="play-icon"><div class="play-triangle"></div></div></div>
+                </a>
+            </div>
+ 
+            <!-- BOUTON ACTIVITÉ MODIFIÉ : MENAGE VERS LA NOUVELLE SLIDE -->
+            <div style="width: 100%; text-align: center; margin-top: 20px; margin-bottom: 20px;">
+                <button class="next-btn" onclick="switchView('view-rse-activity-intro')" style="background-color: var(--accent-action);">
+                    Passez à l'activité &rarr;
+                </button>
+            </div>
+        </div>
+ 
+        <!-- NOUVELLE VUE 13 : ACTIVITÉ RSE (CONSIGNES) -->
+        <div id="view-rse-activity-intro" class="view">
+            <div class="nav-row">
+                <div class="nav-link" onclick="switchView('view-rse-videos')">&larr; Retour aux vidéos</div>
+                <span style="color:#bdc3c7; font-size:0.9rem;">Module RSE - Activité</span>
+            </div>
+ 
+            <div class="activity-view">
+                <h2 class="view-title" style="font-size: 1.3rem; line-height: 1.4;">Consigne de l'activité : Étude de Cas – Dirigeant de PME</h2>
+ 
+                <div style="text-align: left; max-width: 800px; line-height: 1.6; font-size: 0.95rem; margin-bottom: 20px; color: #555; padding: 0 20px;">
+                    <p>Vous allez incarner le dirigeant d'une petite ou moyenne entreprise confrontée à 40 situations relevant des dimensions environnementale, sociale, économique et sociétale de la RSE.</p>
+                    <p>Votre objectif est de prendre des décisions stratégiques parmi trois options proposées pour chaque situation. Chaque choix influence votre score RSE global ainsi que l'impact de votre entreprise sur la planète et la société.</p>
+ 
+                    <p><strong>Consignes :</strong></p>
+                    <ul style="margin-left: 20px; margin-bottom: 20px; list-style-type: disc;">
+                        <li>Lisez attentivement chaque situation présentée.</li>
+                        <li>Sélectionnez une seule réponse parmi les trois options proposées.</li>
+                        <li>Avancez à votre rythme jusqu'à la fin des 40 décisions.</li>
+                        <li>À l'issue du parcours, observez votre score final et analysez la cohérence globale de vos choix.</li>
+                    </ul>
+ 
+                    <p><strong>Objectif pédagogique :</strong> Développer votre capacité à :</p>
+                    <ul style="margin-left: 20px; margin-bottom: 20px; list-style-type: disc;">
+                        <li>identifier les enjeux RSE dans des situations professionnelles réalistes,</li>
+                        <li>distinguer les décisions responsables de celles qui comportent des risques,</li>
+                        <li>comprendre l'impact global d'une stratégie RSE sur une PME.</li>
+                    </ul>
+                </div>
+ 
+                <a href="https://francoismog.github.io/DevDU_-tude_de_Cas_Dirigeant_de_PME2/" target="_blank" class="cta-button">
+                    Activité
+                </a>
+            </div>
+        </div>
+ 
+        <!-- NOUVELLE VUE 14 : ODD - MISSION EXPLORATION (INTRO) -->
+        <div id="view-odd-intro" class="view">
+            <div class="nav-row">
+                <div class="nav-link" onclick="switchView('view-sommaire')">&larr; Sommaire</div>
+                <span style="color:#bdc3c7; font-size:0.9rem;">Module ODD</span>
+            </div>
+ 
+            <div class="activity-view">
+                <h2 class="view-title">Les ODD - Mission Exploration</h2>
+ 
+                <!-- Emplacement pour l'image PJ - URL INTÉGRÉE ET ADAPTÉE -->
+                <div class="video-thumbnail-container" style="cursor: default;">
+                    <!-- MODIFICATION ICI : Hauteur réduite à 400px pour laisser de la place aux boutons -->
+                    <img src="https://z-cdn-media.chatglm.cn/files/84a3509e-3b71-4534-8bc2-a33d36b58c17.png?auth_key=1871830706-98844efde73c4c02b7af28aaeb606f90-0-b8db8c0968de6ebda687a0d5d4288371" alt="ODD Mission" class="video-thumbnail-img" style="object-fit: contain; height: auto; max-height: 400px;">
+                </div>
+ 
+                <!-- Conteneur pour les deux boutons côte à côte -->
+                <div style="display: flex; gap: 15px; margin-bottom: 20px; width: 100%; max-width: 600px; justify-content: center;">
+                    <a href="https://www.unicef.fr/qui-sommes-nous/objectifs-de-developpement-durable-odd/" target="_blank" class="cta-button" style="font-size: 0.9rem; padding: 10px 20px;">
+                        En savoir +
+                    </a>
+                    <a href="https://www.youtube.com/watch?v=axTiw9ga-No" target="_blank" class="cta-button" style="font-size: 0.9rem; padding: 10px 20px;">
+                        Vidéo
+                    </a>
+                </div>
+ 
+                <button class="next-btn" onclick="switchView('view-odd-activity')">
+                    Suivant &rarr;
+                </button>
+            </div>
+        </div>
+ 
+        <!-- NOUVELLE VUE 15 : ODD - ACTIVITÉ -->
+        <div id="view-odd-activity" class="view">
+            <div class="nav-row">
+                <div class="nav-link" onclick="switchView('view-odd-intro')">&larr; Retour</div>
+                <span style="color:#bdc3c7; font-size:0.9rem;">Module ODD - Jeu</span>
+            </div>
+ 
+            <div class="activity-view">
+                <h2 class="view-title">ODD Game : Diagnostiquer les enjeux mondiaux</h2>
+ 
+                <!-- Image 17ODD.png - INTÉGRATION DIRECTE DE L'URL -->
+                <div class="video-thumbnail-container" style="cursor: default;">
+                    <img src="https://z-cdn-media.chatglm.cn/files/2f05402a-7b8a-4d85-a974-9913139a0a94.png?auth_key=1871918968-9b5646e2a8ca4a4bb7d68615dd600c18-0-722eef6259e2edeae76178a6731f9029" alt="Les 17 ODD" class="video-thumbnail-img" style="object-fit: contain;">
+                </div>
+ 
+                <!-- Bouton Consigne (avec toggle JS simple inline) -->
+                <button class="next-btn" onclick="var el = document.getElementById('odd-instructions'); el.style.display = el.style.display === 'block' ? 'none' : 'block';">Consigne</button>
+ 
+                <!-- Zone de texte cachée par défaut, affichée par le bouton -->
+                <div id="odd-instructions" style="display:none; text-align: left; max-width: 700px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 20px; font-size: 0.9rem; line-height: 1.4; color: #333;">
+                    <strong>Le défi :</strong><br>
+                    Notre monde fait face à 51 problèmes majeurs illustrés au centre de votre écran. Pour chacun d'eux, l'ONU a défini un Objectif de Développement Durable (ODD) spécifique afin d'y apporter une solution d'ici 2030.<br><br>
+ 
+                    <strong>Votre mission :</strong><br>
+                    1. Analysez chaque situation apparaissant dans la colonne centrale.<br>
+                    2. Identifiez l'objectif (à gauche ou à droite) qui correspond le mieux à la problématique.<br>
+                    3. Glissez et déposez la situation dans la zone de l'ODD choisi.<br><br>
+ 
+                    <strong>Attention :</strong><br>
+                    Une erreur et la situation refusera de s'installer ! L'activité est terminée lorsque les 51 enjeux sont correctement classés.<br><br>
+ 
+                    <em>À vous de jouer pour transformer le monde !</em>
+                </div>
+ 
+                <!-- Bouton Activité -->
+                <a href="https://francoismog.github.io/DevDu_ODD_51_situations/" target="_blank" class="cta-button">
+                    Démarrez l'activité
+                </a>
+ 
+                <!-- AJOUT DU BOUTON SUIVANT POUR LA NOUVELLE SLIDE -->
+                <button class="next-btn" onclick="switchView('view-odd-mission')" style="background-color: var(--primary-color); margin-top: 15px;">
+                    Suivant : Ma Mission ODD &rarr;
+                </button>
+            </div>
+        </div>
+ 
+        <!-- NOUVELLE VUE 16 : ODD - MISSION PRIORITAIRE -->
+        <div id="view-odd-mission" class="view">
+            <div class="nav-row">
+                <div class="nav-link" onclick="switchView('view-odd-activity')">&larr; Retour au jeu</div>
+                <span style="color:#bdc3c7; font-size:0.9rem;">Module ODD</span>
+            </div>
+ 
+            <div class="activity-view">
+                <h2 class="view-title">Ma Mission ODD Prioritaire</h2>
+ 
+                <div style="text-align: left; max-width: 800px; line-height: 1.6; font-size: 0.95rem; margin-bottom: 20px; color: #555; padding: 0 20px;">
+                    <p><strong>Objectif de l'activité :</strong> Identifier les Objectifs de Développement Durable (ODD) les plus en lien avec votre métier, réfléchir à leur pertinence dans votre pratique professionnelle et formaliser un engagement personnel.</p>
+ 
+                    <p><strong>Étapes de la mission :</strong></p>
+                    <ol style="margin-left: 20px; margin-bottom: 20px; list-style-type: decimal; line-height: 1.8;">
+                        <li>Choisissez 3 ODD dans la bibliothèque en les glissant dans la zone "Ma sélection". <br><em>(→ Vous devez en avoir exactement 3)</em></li>
+                        <li>Pour chacun, expliquez :<br>
+                        - Pourquoi cet ODD est lié à votre métier.<br>
+                        - Quelle action concrète vous pourriez mettre en place.</li>
+                        <li>Rédigez votre slogan / engagement personnel en lien avec vos choix.</li>
+                        <li>Cliquez sur "Télécharger mon PDF" pour obtenir votre fiche personnalisée.</li>
+                    </ol>
+                </div>
+ 
+                <a href="https://francoismog.github.io/DevDu_mes_odd_-prioritaires/" target="_blank" class="cta-button">
+                    Démarrez l'activité
+                </a>
+            </div>
+        </div>
+ 
+        <!-- NOUVELLE VUE 17 : NUMÉRIQUE ET ENVIRONNEMENT (IMAGE PLEINE PAGE) -->
+        <div id="view-numerique-intro" class="view">
+            <div class="nav-row">
+                <div class="nav-link" onclick="switchView('view-sommaire')">&larr; Sommaire</div>
+                <span style="color:#bdc3c7; font-size:0.9rem;">Module Numérique</span>
+            </div>
+ 
+            <!-- Wrapper pour l'image plein page -->
+            <div class="fullscreen-img-wrapper">
+ 
+                <!-- IMAGE PLEINE PAGE - URL INTÉGRÉE DIRECTEMENT -->
+                <img src="https://z-cdn-media.chatglm.cn/files/fbb0f90c-7dff-454b-ad2f-19a2ad522db7.png?auth_key=1871943977-cf1bbedf44d94bcb8d3468f7c03ff0e6-0-d89f9145c787bfe3c781c0038a66bf08" alt="Pollution Numérique" class="fullscreen-img">
+ 
+                <!-- Overlay pour le bouton -->
+                <div class="numerique-overlay-content">
+                    <!-- BOUTON POUR PASSER A L'ACTIVITE -->
+                    <button class="cta-button" onclick="switchView('view-enigme-1')">
+                        Passez à l'activité
+                    </button>
+                </div>
+            </div>
+        </div>
+ 
+        <!-- NOUVELLE VUE 18 : NUMÉRIQUE - ENIGME 1 -->
+        <div id="view-enigme-1" class="view">
+            <div class="nav-row">
+                <div class="nav-link" onclick="switchView('view-numerique-intro')">&larr; Retour</div>
+                <span style="color:#bdc3c7; font-size:0.9rem;">Module Numérique</span>
+            </div>
+ 
+            <div class="activity-view">
+                <h2 class="view-title">Enigme 1 : La Boîte Pro Saturée</h2>
+ 
+                <!-- Image - INTÉGRATION DIRECTE DE L'URL -->
+                <div class="video-thumbnail-container" style="cursor: default;">
+                    <img src="https://z-cdn-media.chatglm.cn/files/88bf4d03-18f1-4870-92a0-b67423386061.png?auth_key=1871947167-3c32d355b26646f58359c51410ec4e7f-0-0c47b4e4747bad801692d236ec32315a" alt="Boîte Pro Saturée" class="video-thumbnail-img" style="object-fit: contain;">
+                </div>
+ 
+                <!-- Texte explicatif -->
+                <div style="text-align: left; max-width: 800px; line-height: 1.6; font-size: 0.95rem; margin-bottom: 20px; color: #555; padding: 0 20px;">
+                    <p>Analysez les 6 situations d'e‑mail proposées et classez‑les de 1 (le moins impactant) à 6 (le plus impactant) selon leur empreinte environnementale.</p>
+                    <p>Une fois vos rangs choisis, saisissez le code final pour voir si vous parvenez à désaturer la boîte mail.</p>
+                </div>
+ 
+                <!-- Boutons d'action -->
+                <div style="display: flex; gap: 15px; width: 100%; max-width: 600px; justify-content: center;">
+                    <a href="https://francoismog.github.io/DevDu_PN_-nigme-1-La-Bo-te_Pro_Satur-e/" target="_blank" class="cta-button">
+                        Démarrez l'énigme
+                    </a>
+                    <button class="next-btn" onclick="switchView('view-enigme-2')">
+                        Enigme suivante
+                    </button>
+                </div>
+            </div>
+        </div>
+ 
+        <!-- NOUVELLE VUE 19 : NUMÉRIQUE - ENIGME 2 -->
+        <div id="view-enigme-2" class="view">
+            <div class="nav-row">
+                <div class="nav-link" onclick="switchView('view-enigme-1')">&larr; Retour</div>
+                <span style="color:#bdc3c7; font-size:0.9rem;">Module Numérique</span>
+            </div>
+ 
+            <div class="activity-view">
+                <h2 class="view-title">Enigme 2 - Le Parc en Surchauffe</h2>
+ 
+                <!-- Image - INTÉGRATION DIRECTE DE L'URL -->
+                <div class="video-thumbnail-container" style="cursor: default;">
+                    <img src="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=800&auto=format&fit=crop" alt="Le Parc en Surchauffe" class="video-thumbnail-img" style="object-fit: contain;">
+                </div>
+ 
+                <!-- Texte explicatif -->
+                <div style="text-align: left; max-width: 800px; line-height: 1.6; font-size: 0.95rem; margin-bottom: 20px; color: #555; padding: 0 20px;">
+                    <p>Analysez les 6 situations liées au parc informatique et classez‑les de la moins polluante à la plus polluante selon leur impact environnemental.</p>
+                    <p>Une fois votre classement établi, saisissez la suite des 6 lettres correspondantes pour tenter de déverrouiller le système.</p>
+                </div>
+ 
+                <!-- Boutons d'action -->
+                <div style="display: flex; gap: 15px; width: 100%; max-width: 600px; justify-content: center;">
+                    <a href="https://francoismog.github.io/DevDu_PN_enigme2_Le_parcensurchauffe/" target="_blank" class="cta-button">
+                        Démarrez l'énigme
+                    </a>
+                    <button class="next-btn" onclick="switchView('view-enigme-3')">
+                        Enigme suivante
+                    </button>
+                </div>
+            </div>
+        </div>
+ 
+        <!-- NOUVELLE VUE 20 : NUMÉRIQUE - ENIGME 3 -->
+        <div id="view-enigme-3" class="view">
+            <div class="nav-row">
+                <div class="nav-link" onclick="switchView('view-enigme-2')">&larr; Retour</div>
+                <span style="color:#bdc3c7; font-size:0.9rem;">Module Numérique</span>
+            </div>
+ 
+            <div class="activity-view">
+                <h2 class="view-title">Enigme 3 - Le nuage surchargé</h2>
+ 
+                <!-- Image - INTÉGRATION DIRECTE DE L'URL -->
+                <div class="video-thumbnail-container" style="cursor: default;">
+                    <img src="https://z-cdn-media.chatglm.cn/files/0ee6a042-014c-4dba-b575-29b4f47f012a.png?auth_key=1871957820-af7e2baeec6e4fc696c2c44d82aeb0f3-0-ea83096b285088cb67553d11dc5367fe" alt="Le nuage surchargé" class="video-thumbnail-img" style="object-fit: contain;">
+                </div>
+ 
+                <!-- Texte explicatif -->
+                <div style="text-align: left; max-width: 800px; line-height: 1.6; font-size: 0.95rem; margin-bottom: 20px; color: #555; padding: 0 20px;">
+                    <p>Parcourez les 8 fichiers du cloud et sélectionnez les 4 moins utiles à conserver.</p>
+                    <p>Le mot‑code final est formé par la première lettre de chacun des fichiers que vous avez choisis. Validez ensuite votre sélection pour voir si vous parvenez à alléger le nuage.</p>
+                </div>
+ 
+                <!-- Boutons d'action -->
+                <div style="display: flex; gap: 15px; width: 100%; max-width: 600px; justify-content: center;">
+                    <a href="https://francoismog.github.io/DevDu_PN_enigme3__lenusageensurcharge/" target="_blank" class="cta-button">
+                        Démarrez l'énigme
+                    </a>
+                    <button class="next-btn" onclick="switchView('view-enigme-final')">
+                        Enigme Final
+                    </button>
+                </div>
+            </div>
+        </div>
+ 
+        <!-- NOUVELLE VUE 21 : NUMÉRIQUE - ENIGME FINAL -->
+        <div id="view-enigme-final" class="view">
+            <div class="nav-row">
+                <div class="nav-link" onclick="switchView('view-enigme-3')">&larr; Retour</div>
+                <span style="color:#bdc3c7; font-size:0.9rem;">Module Numérique</span>
+            </div>
+ 
+            <div class="activity-view">
+                <!-- Titre Principal -->
+                <h2 class="view-title" style="color: var(--text-color); text-transform: uppercase; letter-spacing: 1px;">Enigme finale - Déblocage du Protocole</h2>
+ 
+                <!-- Image demandée -->
+                <div class="video-thumbnail-container" style="cursor: default;">
+                    <img src="https://z-cdn-media.chatglm.cn/files/5a83b4e0-6d14-4941-a53f-d8c9a3634ff2.png?auth_key=1872031783-ad3a732da07347e2921e5a7df6700b1a-0-df07e535e31b44f8270784eb3dd859c7" alt="Déblocage du Protocole" class="video-thumbnail-img" style="object-fit: contain;">
+                </div>
+ 
+                <!-- Textes explicatifs demandés -->
+                <div style="text-align: center; max-width: 800px; line-height: 1.6; font-size: 0.95rem; margin-bottom: 25px; color: #555; padding: 0 20px;">
+                    <p style="font-size: 1.05rem; font-weight: 600; color: var(--text-color);">Vous avez résolu les trois énigmes :</p>
+                    <p style="font-style: italic; color: #7f8c8d; margin-bottom: 15px;">Le Parc en Surchauffe - La Boîte Pro Saturée - Le Nuage Surchargé</p>
+ 
+                    <p>Il est temps de regrouper les 3 codes obtenus pour tenter de débloquer le protocole de sobriété numérique.</p>
+ 
+                    <p style="margin-top: 15px;"><strong>Objectif :</strong> Assembler les 3 codes finaux dans le bon ordre pour reconstituer la clé d'activation.</p>
+ 
+                    <p style="margin-top: 15px;"><strong>Votre mission :</strong> Récupérez les 3 codes obtenus dans les énigmes précédentes. Assemblez-les dans l'ordre indiqué. Saisissez la clé complète pour lancer le protocole.</p>
+ 
+                    <p style="margin-top: 20px; color: var(--accent-action); font-weight: 600; background: #fff8e1; padding: 10px; border-radius: 8px; border-left: 4px solid var(--accent-action);">
+                        🧠 Astuce : Observez bien les indices visuels et les titres des énigmes : l'ordre logique peut faire toute la différence….
+                    </p>
+                </div>
+ 
+                <!-- Boutons d'action -->
+                <div style="display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 500px; justify-content: center; align-items: center; margin-top: auto;">
+                    <a href="https://francoismog.github.io/DevDu_PN_enigme_finale_-cran_D-blocage-du-Protocole/" target="_blank" class="cta-button" style="width: 100%; text-align: center;">
+                        Démarrez le déblocage
+                    </a>
+ 
+                    <button class="next-btn" onclick="switchView('view-bonus-video')" style="background-color: var(--primary-color); width: 100%; max-width: 500px;">
+                        Bonus Jeu vidéo
+                    </button>
+                </div>
+            </div>
+        </div>
+ 
+        <!-- NOUVELLE VUE 22 : BONUS JEU VIDÉO -->
+        <div id="view-bonus-video" class="view">
+            <div class="nav-row">
+                <div class="nav-link" onclick="switchView('view-enigme-final')">&larr; Retour</div>
+                <span style="color:#bdc3c7; font-size:0.9rem;">Bonus</span>
+            </div>
+ 
+            <div class="activity-view">
+                <h2 class="view-title">Bonus Jeu Vidéo</h2>
+ 
+                <!-- Image spécifique Mail Invader -->
+                <div class="video-thumbnail-container" style="cursor: default;">
+                    <img src="https://z-cdn-media.chatglm.cn/files/2db94520-fd6d-4a59-96a2-699193a2b89c.png?auth_key=1872033667-b07ffc9e6db74debbbfecd756b365d68-0-4ad22a053d85ee669bcbc3d991a23b53" alt="Mail Invader" class="video-thumbnail-img" style="object-fit: contain;">
+                </div>
+ 
+                <div style="text-align: center; max-width: 800px; line-height: 1.6; font-size: 0.95rem; margin-bottom: 20px; color: #555; padding: 0 20px;">
+                    <p>Bienvenue dans l'espace Bonus.</p>
+                    <p>Découvrez notre jeu vidéo exclusif sur la sobriété numérique.</p>
+                </div>
+ 
+                <!-- Modification ici : Lien mis à jour et texte du bouton -->
+                <a href="https://francoismog.github.io/DevDu_Mail_invaders/" target="_blank" class="cta-button">
+                    Lancer le jeu
+                </a>
+            </div>
+        </div>
+ 
+        <!-- NOUVELLE VUE 23 : VOS ENGAGEMENTS (MODIFIÉE AVEC TECHNIQUE NUMÉRIQUE) -->
+        <div id="view-engagements" class="view">
+            <!-- Suppression de .activity-view pour utiliser fullscreen-img-wrapper comme dans view-numerique-intro -->
+            <div class="fullscreen-img-wrapper">
+ 
+                <!-- INTÉGRATION DIRECTE DE L'IMAGE fournie -->
+                <img src="https://z-cdn-media.chatglm.cn/files/06783c0e-9ed0-4b93-ae14-1c9be372b7db.png?auth_key=1872038855-47cff19dbae44633b2c02a2caaeaf8f4-0-08b05de363a8ad6736d614f3f6be2eb9" alt="Arbre des Engagements" class="fullscreen-img">
+ 
+                <!-- Overlay pour le contenu (Boutons et Texte) -->
+                <div class="numerique-overlay-content" style="flex-direction: column; align-items: center;">
+ 
+                    <div style="text-align: center; max-width: 800px; width: 100%;">
+                        <h2 class="view-title" style="color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.5); margin-bottom: 20px;">Vos engagements et Les éléments retenus</h2>
+ 
+                        <p style="color: white; text-shadow: 0 1px 3px rgba(0,0,0,0.6); line-height: 1.6; font-size: 1.05rem; margin-bottom: 30px;">
+                            Le développement durable commence par des gestes simples. Faites pousser votre Arbre des Engagements en choisissant trois actions concrètes pour réduire votre impact sur l'environnement.
+                        </p>
+ 
+                        <!-- Boutons actifs -->
+                        <div style="display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 400px; margin: 0 auto;">
+                            <!-- Bouton Modifié : Nouvelle fenêtre -->
+                            <button class="cta-button" onclick="window.open('https://francoismog.github.io/DevDu_Coclusion_arbre_des_engagement/', '_blank')" style="width: 100%; text-align: center;">
+                                Vos engagements
+                            </button>
+ 
+                            <!-- Bouton Modifié : Déclenche le quiz final -->
+                            <button class="cta-button" onclick="startFinalQuiz()" style="width: 100%; text-align: center; background-color: var(--accent-action);">
+                                Quiz final
+                            </button>
+                        </div>
+ 
+                        <div style="margin-top: 30px;">
+                            <button class="next-btn" onclick="switchView('view-home')" style="background: rgba(255,255,255,0.2); border: 1px solid white;">
+                                Retour à l'accueil
+                            </button>
+                        </div>
+                    </div>
+ 
+                </div>
+            </div>
+        </div>
+ 
+        <!-- NOUVELLE VUE 24 : ATTESTATION (MODIFIÉE POUR A4) -->
+        <div id="view-certificate" class="view">
+            <div class="print-btn-container">
+                <button class="cta-button" onclick="window.print()" style="background-color: var(--text-color);">
+                    <i class="fas fa-print"></i> Imprimer / Télécharger PDF
+                </button>
+                <button class="next-btn" onclick="switchView('view-home')" style="display: inline-block; margin-left: 10px;">
+                    Retour Accueil
+                </button>
+            </div>
+ 
+            <div class="certificate-paper">
+                <!-- HEADER LOGOS -->
+                <div class="cert-header">
+                    <!-- LOGO GAUCHE : HAUTS DE FRANCE - URL INTÉGRÉE -->
+                    <div class="cert-logos" style="display:flex; align-items:center;">
+                        <img src="https://z-cdn-media.chatglm.cn/files/d8deaf22-4d6a-4fec-9711-9d720b45ac93.png?auth_key=1871684151-de1f01a71c674a8d84ceddaec254b9bf-0-25cf3419d2ef34bfb682d1d003e8f3ad" alt="Logo Hauts-de-France" style="max-height: 90px;">
+                    </div>
+ 
+                    <!-- CENTRE : TITRE -->
+                    <div style="text-align: center; flex-grow: 1;">
+                        <!-- Espace vide -->
+                    </div>
+ 
+                    <!-- LOGO DROITE : GRETA - URL INTÉGRÉE -->
+                    <div class="cert-logos" style="display:flex; justify-content:flex-end; align-items:center;">
+                        <img src="https://z-cdn-media.chatglm.cn/files/14b8043a-a7bd-4554-a702-7205611c9ef2.jpg?auth_key=1871684151-b45846585f434a60a5eac478b19b1908-0-b7e9e7f2213ea65dafdb1f810d3d90dd" alt="Logo GRETA" style="max-height: 90px;">
+                    </div>
+                </div>
+ 
+                <!-- TITRE -->
+                <div class="cert-title">
+                    <h1>Attestation de suivi</h1>
+                    <h2>Module de sensibilisation au Développement Durable</h2>
+                </div>
+ 
+                <!-- CORPS -->
+                <div class="cert-body">
+                    <p style="text-align:center; margin-bottom:15px;">
+                        L'attestation est délivrée à :
+                    </p>
+ 
+                    <div class="cert-user-name" id="cert-name-display">NOM Prénom</div>
+ 
+                    <p>
+                        Pour avoir complété avec succès le parcours de formation en ligne sur les enjeux du développement durable.
+                        Ce module a permis d'aborder les fondamentaux, les Objectifs de Développement Durable (ODD),
+                        la Responsabilité Sociétale des Entreprises (RSE) et l'impact du numérique sur l'environnement.
+                    </p>
+ 
+                    <!-- GRILLE DE RESULTATS -->
+                    <div class="cert-grid">
+                        <div class="cert-item">
+                            <strong>Date de réalisation :</strong>
+                            <br><span id="cert-date">01/01/2024</span>
+                        </div>
+                        <div class="cert-item">
+                            <strong>Temps passé :</strong>
+                            <br><span id="cert-time">00h 00m 00s</span>
+                        </div>
+                        <div class="cert-item">
+                            <strong>Quiz Diagnostic :</strong>
+                            <br><span id="cert-score-diag">0 / 10</span>
+                        </div>
+                        <div class="cert-item">
+                            <strong>Quiz Final :</strong>
+                            <br><span id="cert-score-final">0 / 10</span>
+                        </div>
+                    </div>
+ 
+                    <!-- THEMATIQUES -->
+                    <div class="cert-themes">
+                        <h3 style="margin-bottom:15px; color:var(--primary-dark); border-bottom:1px solid #ddd; padding-bottom:5px;">Thématiques abordées :</h3>
+                        <ul>
+                            <li>Les Fondamentaux du Développement Durable</li>
+                            <li>Les Objectifs de Développement Durable (ODD)</li>
+                            <li>La RSE (Responsabilité Sociétale des Entreprises)</li>
+                            <li>Le Numérique et l'Environnement</li>
+                        </ul>
+                    </div>
+                </div>
+ 
+                <!-- SIGNATURES SUPPRIMÉES COMME DEMANDÉ -->
+ 
+            </div>
+        </div>
+ 
+    </div>
+ 
+    <!-- MODALE DE SAISIE DU NOM -->
+    <div id="modal-input-overlay">
+        <div class="modal-content">
+            <h3>Informations pour l'attestation</h3>
+            <div class="input-group">
+                <label for="input-lastname">Nom :</label>
+                <input type="text" id="input-lastname" placeholder="Votre nom">
+            </div>
+            <div class="input-group">
+                <label for="input-firstname">Prénom :</label>
+                <input type="text" id="input-firstname" placeholder="Votre prénom">
+            </div>
+            <button class="cta-button" onclick="generateCertificate()" style="width:100%;">Générer l'attestation</button>
+        </div>
+    </div>
+
+    <!-- MODALE DE SAISIE DU CODE SECRET -->
+    <div id="modal-code-overlay">
+        <div class="modal-content">
+            <h3>🔑 Entrez votre code</h3>
+            <input type="text" id="input-code" maxlength="10" autocomplete="off" placeholder="•••">
+            <div id="code-message"></div>
+            <button class="cta-button" onclick="submitCode()" style="width:100%;">Valider</button>
+        </div>
+    </div>
+ 
+    <script>
+        // --- LOGIQUE DE NAVIGATION & PROGRESSION ---
+ 
+        // Liste des vues clés qui comptent pour la progression (Fin de chaque module)
+        // CORRECTION : un module = une étape (25 %). Le module "Fondamentaux" propose 2 parcours
+        // (3 piliers OU limites du monde) : avant, seul le premier comptait, et l'apprenant
+        // qui choisissait "limites du monde" restait bloqué à 75 % sans accès au quiz final.
+        const moduleMilestones = {
+            'fondamentaux': ['view-fondamentaux-activity', 'view-limits'],
+            'odd': ['view-odd-mission'],
+            'rse': ['view-rse-activity-intro'],
+            'numerique': ['view-enigme-final']
+        };
+        const keyMilestones = Object.keys(moduleMilestones);
+
+        const visitedViews = new Set(); // contient les modules terminés
+
+        function getModuleForView(viewId) {
+            return keyMilestones.find(m => moduleMilestones[m].includes(viewId));
+        }
+
+        function switchView(targetId) {
+            // CORRECTION : la classe "quiz final" (qui masque la progression) était retirée
+            // juste après avoir été posée. Elle est maintenant gérée ici selon la vue cible.
+            const wrapper = document.querySelector('.app-wrapper');
+            const isFinalQuiz = (targetId === 'view-quiz' && activeQuizData === finalQuizData);
+            wrapper.classList.toggle('view-final-quiz', isFinalQuiz);
+ 
+            // --- GESTION DE L'AFFICHAGE BARRE & TIMER ---
+            // Sélection des éléments
+            const progressContainer = document.querySelector('.progress-container');
+            const timerBadge = document.querySelector('.timer-badge');
+ 
+            // LOGIQUE : Masquer sur l'Accueil et l'Attestation. Afficher ailleurs.
+            if (targetId === 'view-home' || targetId === 'view-certificate') {
+                if(progressContainer) progressContainer.style.display = 'none';
+                if(timerBadge) timerBadge.style.display = 'none';
+            } else {
+                if(progressContainer) progressContainer.style.display = 'flex';
+                if(timerBadge) timerBadge.style.display = 'flex';
+ 
+                // Démarrer le timer si c'est la première fois qu'on quitte l'accueil
+                // CORRECTION : on teste l'existence du chrono et non totalSeconds === 0,
+                // sinon un 2e clic dans la 1re seconde lançait un 2e chrono (temps doublé).
+                if (!timerInterval) {
+                    startTimer();
+                }
+            }
+ 
+            // --- GESTION STANDARD DES VUES ---
+            const views = document.querySelectorAll('.view');
+            views.forEach(view => { view.classList.remove('active'); });
+            const targetView = document.getElementById(targetId);
+            if (targetView) {
+                targetView.classList.add('active');
+                targetView.scrollTop = 0; // chaque vue s'ouvre en haut
+            }
+
+            const completedModule = getModuleForView(targetId);
+            if (completedModule) {
+                visitedViews.add(completedModule);
+                updateProgressBar();
+            }
+        }
+ 
+        function updateProgressBar() {
+            const progress = (visitedViews.size / keyMilestones.length) * 100;
+            const fill = document.getElementById('progress-fill');
+            const text = document.getElementById('progress-text');
+            const btnUnlock = document.getElementById('btn-unlock');
+ 
+            if (fill && text) {
+                fill.style.width = `${progress}%`;
+                text.innerText = `${Math.round(progress)}%`;
+ 
+                if (progress === 100) {
+                    if(btnUnlock) btnUnlock.style.display = 'inline-block';
+                }
+            }
+        }
+ 
+        // --- LOGIQUE DU CHRONOMÈTRE ---
+        let timerInterval; let totalSeconds = 0;
+        const timerDisplay = document.getElementById('timer-display');
+        function startTimer() {
+            timerDisplay.innerText = "00:00:00";
+            timerInterval = setInterval(() => {
+                totalSeconds++;
+                const hrs = Math.floor(totalSeconds / 3600);
+                const mins = Math.floor((totalSeconds % 3600) / 60);
+                const secs = totalSeconds % 60;
+                timerDisplay.innerText =
+                    `${hrs > 9 ? hrs : "0"+hrs}:${mins > 9 ? mins : "0"+mins}:${secs > 9 ? secs : "0"+secs}`;
+            }, 1000);
+        }
+ 
+        // --- MODIFICATION INITIALISATION ---
+        // On masque les éléments au chargement car on est sur la page d'accueil par défaut
+        document.addEventListener('DOMContentLoaded', () => {
+            const progressContainer = document.querySelector('.progress-container');
+            const timerBadge = document.querySelector('.timer-badge');
+ 
+            // Masquer initialement
+            if(progressContainer) progressContainer.style.display = 'none';
+            if(timerBadge) timerBadge.style.display = 'none';
+ 
+            // NE PAS lancer startTimer() ici
+        });
+ 
+        // --- DONNÉES DU QUIZ DIAGNOSTIC (ORIGINAL) ---
+        const diagnosticQuizData = [
+            {
+                question: "Le numérique pollue-t-il plus que l'aviation civile mondiale ?",
+                options: ["VRAI", "FAUX"],
+                correct: 0,
+                explanation: "Le numérique représente environ 4% des émissions mondiales de gaz à effet de serre, contre environ 2,5% à 3% pour l'aviation.",
+                image: "https://images.unsplash.com/photo-1558494949-ef520b0042a0?q=80&w=800&auto=format&fit=crop"
+            },
+            {
+                question: "Le recyclage est-il la solution prioritaire pour réduire nos déchets ?",
+                options: ["VRAI", "FAUX"],
+                correct: 1,
+                explanation: "Dans la hiérarchie, le meilleur déchet est celui qu'on ne produit pas (Réduire). Le recyclage consomme de l'énergie.",
+                image: "https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?q=80&w=800&auto=format&fit=crop"
+            },
+            {
+                question: "Une voiture électrique n'émet aucun CO2 sur l'ensemble de son cycle de vie ?",
+                options: ["VRAI", "FAUX"],
+                correct: 1,
+                explanation: "Sa fabrication (batterie) est très gourmande en énergie. Elle devient plus propre qu'une thermique seulement après 30 000 à 40 000 km.",
+                image: "https://images.unsplash.com/photo-1593941707882-a5bba14938c7?q=80&w=800&auto=format&fit=crop"
+            },
+            {
+                question: "La France produit plus de la moitié de son électricité grâce aux énergies renouvelables ?",
+                options: ["VRAI", "FAUX"],
+                correct: 1,
+                explanation: "L'électricité est majoritairement nucléaire (~70%). Les renouvelables représentent environ 25-30%.",
+                image: "https://images.unsplash.com/photo-1497435334941-8c899ee9e8e9?q=80&w=800&auto=format&fit=crop"
+            },
+            {
+                question: "Acheter un produit 'Bio' garantit-il toujours un faible bilan carbone ?",
+                options: ["VRAI", "FAUX"],
+                correct: 1,
+                explanation: "Un produit bio peut venir de l'autre bout du monde en avion. Le critère 'local' est souvent plus déterminant.",
+                image: "https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=800&auto=format&fit=crop"
+            },
+            {
+                question: "Le développement durable, c'est avant tout la protection de l'environnement ?",
+                options: ["VRAI", "FAUX"],
+                correct: 1,
+                explanation: "C'est un équilibre entre trois piliers : l'Environnement, l'Économie et le Social.",
+                image: "https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=800&auto=format&fit=crop"
+            },
+            {
+                question: "Envoyer un mail sans pièce jointe ne consomme aucune énergie ?",
+                options: ["VRAI", "FAUX"],
+                correct: 1,
+                explanation: "Chaque mail transite par des serveurs fonctionnant 24h/24. Les milliards de mails quotidiens pèsent lourd.",
+                image: "https://images.unsplash.com/photo-1563986768609-322da13575f3?q=80&w=800&auto=format&fit=crop"
+            },
+            {
+                question: "La disparition d'une seule espèce d'insecte peut-elle menacer la sécurité alimentaire humaine ?",
+                options: ["VRAI", "FAUX"],
+                correct: 0,
+                explanation: "Plus de 75% des cultures dépendent de la pollinisation. Si les abeilles disparaissent, l'agriculture s'effondre.",
+                image: "https://images.unsplash.com/photo-1558642452-9d2a7deb7f62?q=80&w=800&auto=format&fit=crop"
+            },
+            {
+                question: "La 'Fast-Fashion' est l'une des industries les plus polluantes au monde ?",
+                options: ["VRAI", "FAUX"],
+                correct: 0,
+                explanation: "Elle utilise des quantités astronomiques d'eau (2500L pour un t-shirt) et rejette des microplastiques.",
+                image: "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?q=80&w=800&auto=format&fit=crop"
+            },
+            {
+                question: "Le réchauffement climatique et le trou dans la couche d'ozone, est-ce la même chose ?",
+                options: ["VRAI", "FAUX"],
+                correct: 1,
+                explanation: "Non. L'ozone protège des UV. Le réchauffement est dû aux gaz à effet de serre (CO2) qui retiennent la chaleur.",
+                image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800&auto=format&fit=crop"
+            }
+        ];
+ 
+        // --- DONNÉES DU QUIZ FINAL (NOUVEAU) ---
+        const finalQuizData = [
+            {
+                question: "Quelle part de l'empreinte carbone d'un appareil numérique provient de sa fabrication ?",
+                options: ["A. 16 %", "B. 50 %", "C. 79 %", "D. 5 %"],
+                correct: 2, // C
+                explanation: "C'est la phase la plus polluante du cycle de vie.",
+                image: "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800&auto=format&fit=crop"
+            },
+            {
+                question: "Quel geste est le plus efficace pour réduire la pollution numérique ?",
+                options: ["A. Supprimer ses e‑mails", "B. Utiliser le mode sombre", "C. Allonger la durée de vie des appareils", "D. Fermer les onglets inutiles"],
+                correct: 2, // C
+                explanation: "Réparer vaut mieux que remplacer.",
+                image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=800&auto=format&fit=crop"
+            },
+            {
+                question: "Une heure de streaming peut émettre jusqu'à combien de CO2e ?",
+                options: ["A. 10 g", "B. 100 g", "C. 400 g", "D. 1 kg"],
+                correct: 2, // C
+                explanation: "Cela équivaut à environ 2 km en voiture.",
+                image: "https://images.unsplash.com/photo-1526304640152-d461968a9587?q=80&w=800&auto=format&fit=crop"
+            },
+            {
+                question: "Quel secteur émet légèrement moins de gaz à effet de serre que le numérique ?",
+                options: ["A. Le textile", "B. L'aviation civile", "C. L'agriculture", "D. Le transport maritime"],
+                correct: 1, // B
+                explanation: "On pense souvent que ce secteur est le pire, mais pas ici.",
+                image: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=800&auto=format&fit=crop"
+            },
+            {
+                question: "Quel est l'un des quatre piliers de la RSE selon Archie Carroll ?",
+                options: ["A. La publicité", "B. La philanthropie", "C. La compétitivité", "D. La croissance externe"],
+                correct: 1, // B
+                explanation: "C'est le sommet de la pyramide.",
+                image: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=800&auto=format&fit=crop"
+            },
+            {
+                question: "Que signifient les \"3P\" de la RSE ?",
+                options: ["A. Plan, Pilotage, Production", "B. Public, Private, Partnership", "C. People, Planet, Profit", "D. Performance, Process, Product"],
+                correct: 2, // C
+                explanation: "Un équilibre entre social, environnement et économie.",
+                image: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=800&auto=format&fit=crop"
+            },
+            {
+                question: "Quel est l'objectif principal de la norme ISO 26000 ?",
+                options: ["A. Fixer des objectifs financiers", "B. Encadrer la gouvernance responsable", "C. Réguler la publicité", "D. Définir des règles de cybersécurité"],
+                correct: 1, // B
+                explanation: "Elle porte sur la responsabilité sociétale.",
+                image: "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?q=80&w=800&auto=format&fit=crop"
+            },
+            {
+                question: "Quel gain économique Walmart réalise-t-il grâce à ses panneaux solaires ?",
+                options: ["A. 10 millions $/an", "B. 50 millions $/an", "C. 231 millions $/an", "D. 1 milliard $/an"],
+                correct: 2, // C
+                explanation: "C'est bien plus de 200 millions.",
+                image: "https://images.unsplash.com/photo-1509391366360-2e959784a276?q=80&w=800&auto=format&fit=crop"
+            },
+            {
+                question: "Combien de CO2e peut économiser l'achat d'un smartphone reconditionné ?",
+                options: ["A. 5 kg", "B. 10 kg", "C. 30 kg", "D. 100 kg"],
+                correct: 2, // C
+                explanation: "Cela représente plus de 90 % des émissions d'un téléphone neuf.",
+                image: "https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?q=80&w=800&auto=format&fit=crop"
+            },
+            {
+                question: "Quelle entreprise illustre l'innovation sociale en instaurant un salaire minimum de 70 000 $ ?",
+                options: ["A. IKEA", "B. Tesla", "C. TOMS", "D. Gravity Payments"],
+                correct: 3, // D
+                explanation: "Cette entreprise a misé sur le bien‑être des employés.",
+                image: "https://images.unsplash.com/photo-1497215728101-856f4ea42174?q=80&w=800&auto=format&fit=crop"
+            }
+        ];
+ 
+        // Variable active qui pointe vers le jeu de données actuel
+        let activeQuizData = diagnosticQuizData;
+
+        let currentQuestionIndex = 0;
+        let userScore = 0;
+        let diagnosticScore = 0; // Stockage spécifique pour l'attestation
+        let finalScore = 0;      // CORRECTION : score du quiz final mémorisé séparément pour l'attestation
+
+        // CORRECTION : "Abandonner" ramène au bon endroit selon le quiz en cours
+        function abandonQuiz() {
+            if (activeQuizData === finalQuizData) {
+                switchView('view-engagements');
+            } else {
+                switchView('view-quiz-intro');
+            }
+        }
+ 
+        // --- LOGIQUE DU QUIZ (MODIFIÉE POUR GÉRER 2 QUIZ) ---
+ 
+        function startQuiz() {
+            currentQuestionIndex = 0;
+            userScore = 0;
+            activeQuizData = diagnosticQuizData;
+            // Retire la classe view-final-quiz si on lance le quiz diagnostic
+            document.getElementById('view-quiz').classList.remove('view-final-quiz');
+            // S'assure que le wrapper n'a plus la classe non plus
+            document.querySelector('.app-wrapper').classList.remove('view-final-quiz');
+ 
+            switchView('view-quiz');
+            loadQuestion();
+        }
+ 
+        function startFinalQuiz() {
+            currentQuestionIndex = 0;
+            userScore = 0;
+            activeQuizData = finalQuizData;
+ 
+            // Ajoute la classe view-final-quiz sur la vue
+            document.getElementById('view-quiz').classList.add('view-final-quiz');
+            // AJOUT CRITIQUE : Ajoute la classe sur le wrapper parent pour cacher la barre via CSS
+            document.querySelector('.app-wrapper').classList.add('view-final-quiz');
+ 
+            switchView('view-quiz');
+            loadQuestion();
+        }
+ 
+        function loadQuestion() {
+            // Utilise activeQuizData au lieu de quizData fixe
+            const data = activeQuizData[currentQuestionIndex];
+ 
+            document.getElementById('q-current').innerText = currentQuestionIndex + 1;
+            document.getElementById('q-text').innerText = data.question;
+            const qImg = document.getElementById('q-img');
+            qImg.dataset.fallback = '';
+            qImg.src = data.image;
+            document.getElementById('q-explanation-text').innerText = data.explanation;
+ 
+            const optionsContainer = document.getElementById('q-options');
+            optionsContainer.innerHTML = '';
+ 
+            data.options.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'quiz-option-btn';
+                btn.innerText = opt;
+                btn.onclick = () => checkAnswer(index, btn);
+                optionsContainer.appendChild(btn);
+            });
+ 
+            document.getElementById('q-explanation').classList.remove('visible');
+            const nextBtn = document.getElementById('q-next-btn');
+            nextBtn.disabled = true;
+ 
+            if (currentQuestionIndex === activeQuizData.length - 1) {
+                nextBtn.innerText = "Voir mes résultats";
+            } else {
+                nextBtn.innerText = "Suivant →";
+            }
+        }
+ 
+        function checkAnswer(selectedIndex, btnElement) {
+            const data = activeQuizData[currentQuestionIndex];
+            const allBtns = document.querySelectorAll('#q-options .quiz-option-btn');
+ 
+            allBtns.forEach(b => b.disabled = true);
+ 
+            if (selectedIndex === data.correct) {
+                btnElement.classList.add('correct');
+                userScore++;
+            } else {
+                btnElement.classList.add('wrong');
+                allBtns[data.correct].classList.add('correct');
+            }
+ 
+            document.getElementById('q-explanation').classList.add('visible');
+            document.getElementById('q-next-btn').disabled = false;
+        }
+ 
+        function nextQuestion() {
+            if (currentQuestionIndex < activeQuizData.length - 1) {
+                currentQuestionIndex++;
+                loadQuestion();
+            } else {
+                showResults();
+            }
+        }
+ 
+        function showResults() {
+            document.getElementById('final-score').innerText = `${userScore}/${activeQuizData.length}`;
+            const msgElement = document.getElementById('result-message');
+            const btnAction = document.getElementById('btn-result-action');
+ 
+            // LOGIQUE SPÉCIFIQUE AU QUIZ FINAL
+            if (activeQuizData === finalQuizData) {
+                finalScore = userScore;
+                // Message personnalisé
+                msgElement.innerText = "Félicitations vous avez suivi le module de sensibilisation au développement durable de la région Hauts de France";
+                msgElement.style.color = "var(--primary-dark)";
+ 
+                // Bouton personnalisé -> Ouvre la modale
+                btnAction.innerText = "Télécharger votre attestation";
+                btnAction.onclick = function() { openModal(); };
+            }
+            else {
+                // LOGIQUE PAR DÉFAUT (Diagnostic)
+                // Calcul du pourcentage pour le message
+                const percentage = (userScore / activeQuizData.length) * 100;
+ 
+                // SAUVEGARDE DU SCORE POUR L'ATTESTATION
+                diagnosticScore = userScore;
+
+                // Le sommaire devient accessible directement depuis l'accueil
+                const btnHomeSommaire = document.getElementById('btn-home-sommaire');
+                if (btnHomeSommaire) btnHomeSommaire.style.display = 'inline-block';
+
+                if (percentage >= 80) {
+                    msgElement.innerText = "Excellent ! Vous êtes un expert du développement durable.";
+                    msgElement.style.color = "var(--primary-dark)";
+                } else if (percentage >= 50) {
+                    msgElement.innerText = "Bien joué ! Vous avez de bonnes bases.";
+                    msgElement.style.color = "#f39c12";
+                } else {
+                    msgElement.innerText = "Continuez à vous informer, il y a encore des progrès à faire !";
+                    msgElement.style.color = "var(--accent-climat)";
+                }
+ 
+                btnAction.innerText = "Voir le Sommaire";
+                btnAction.onclick = function() { switchView('view-sommaire'); };
+            }
+ 
+            switchView('view-result');
+        }
+ 
+        // --- LOGIQUE ATTESTATION (NOUVEAU) ---
+ 
+        function openModal() {
+            document.getElementById('modal-input-overlay').style.display = 'flex';
+        }
+ 
+        function generateCertificate() {
+            const lastName = document.getElementById('input-lastname').value.trim();
+            const firstName = document.getElementById('input-firstname').value.trim();
+ 
+            if (!lastName || !firstName) {
+                alert("Veuillez entrer votre nom et votre prénom.");
+                return;
+            }
+ 
+            // Masquer la modale
+            document.getElementById('modal-input-overlay').style.display = 'none';
+ 
+            // Remplir les données de l'attestation
+            document.getElementById('cert-name-display').innerText = `${lastName.toUpperCase()} ${firstName}`;
+            // Plus besoin de mettre à jour cert-sign-user car supprimé
+ 
+            // Date du jour
+            const today = new Date();
+            const dateStr = today.toLocaleDateString('fr-FR');
+            document.getElementById('cert-date').innerText = dateStr;
+ 
+            // Temps passé
+            const hrs = Math.floor(totalSeconds / 3600);
+            const mins = Math.floor((totalSeconds % 3600) / 60);
+            const secs = totalSeconds % 60;
+            document.getElementById('cert-time').innerText =
+                `${hrs}h ${mins}m ${secs}s`;
+ 
+            // Scores
+            document.getElementById('cert-score-diag').innerText = `${diagnosticScore} / ${diagnosticQuizData.length}`;
+            document.getElementById('cert-score-final').innerText = `${finalScore} / ${finalQuizData.length}`;
+ 
+            // Afficher la vue
+            switchView('view-certificate');
+        }
+ 
+        // Fermer la modale si on clique en dehors
+        window.onclick = function(event) {
+            const modal = document.getElementById('modal-input-overlay');
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+            const codeModal = document.getElementById('modal-code-overlay');
+            if (event.target == codeModal) {
+                closeCodeModal();
+            }
+        }
+
+        // --- CODES SECRETS (STYLE JEU VIDÉO) ---
+        // MOG : saute l'introduction et le quiz diagnostic -> Sommaire des modules
+        // LIA : va directement à l'attestation (saisie du nom puis attestation)
+        const secretCodes = {
+            'MOG': function() {
+                const btnHomeSommaire = document.getElementById('btn-home-sommaire');
+                if (btnHomeSommaire) btnHomeSommaire.style.display = 'inline-block';
+                switchView('view-sommaire');
+            },
+            'LIA': function() {
+                // Tous les modules sont considérés comme terminés
+                keyMilestones.forEach(m => visitedViews.add(m));
+                updateProgressBar();
+                switchView('view-certificate');
+                openModal();
+            }
+        };
+
+        function applySecretCode(rawCode) {
+            const code = (rawCode || '').trim().toUpperCase();
+            if (secretCodes[code]) {
+                closeCodeModal();
+                secretCodes[code]();
+                return true;
+            }
+            return false;
+        }
+
+        function openCodeModal() {
+            const input = document.getElementById('input-code');
+            input.value = '';
+            document.getElementById('code-message').innerText = '';
+            document.getElementById('modal-code-overlay').style.display = 'flex';
+            setTimeout(() => input.focus(), 50);
+        }
+
+        function closeCodeModal() {
+            document.getElementById('modal-code-overlay').style.display = 'none';
+        }
+
+        function submitCode() {
+            const input = document.getElementById('input-code');
+            if (!applySecretCode(input.value)) {
+                document.getElementById('code-message').innerText = 'Code incorrect.';
+                input.select();
+            }
+        }
+
+        document.getElementById('input-code').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') submitCode();
+            if (e.key === 'Escape') closeCodeModal();
+        });
+
+        // Saisie "à l'aveugle" comme dans un jeu vidéo : taper MOG ou LIA au clavier
+        // n'importe où dans le module (hors champs de saisie) déclenche le code.
+        let secretBuffer = '';
+        document.addEventListener('keydown', function(e) {
+            if (e.target.matches('input, textarea')) return;
+            if (!e.key || e.key.length !== 1) return;
+            secretBuffer = (secretBuffer + e.key.toUpperCase()).slice(-3);
+            if (applySecretCode(secretBuffer)) secretBuffer = '';
+        });
+ 
+    </script>
+
+    <!-- =====================================================================
+         VERSION MOBILE : navigation simplifiée
+         - barre haute avec bouton retour unique (aussi relié au bouton retour du téléphone)
+         - navigation basse Accueil / Modules / Engagements
+         - suivi des modules terminés dans le sommaire + bloc « Module validé »
+         ===================================================================== -->
+    <script>
+        const M_TITLES = {
+            'view-dd': 'Étape 1/3 · Le développement durable',
+            'view-climat': "Étape 2/3 · L'urgence climatique",
+            'view-test': 'Étape 3/3 · Votre impact',
+            'view-quiz-intro': 'Quiz diagnostic',
+            'view-result': 'Résultats',
+            'view-sommaire': 'Les modules',
+            'view-fondamentaux-choices': 'Les Fondamentaux',
+            'view-fondamentaux-video': 'Fondamentaux · Vidéo',
+            'view-fondamentaux-activity': 'Fondamentaux · Exercice',
+            'view-limits': 'Fondamentaux · Limites planétaires',
+            'view-rse': 'La RSE en action',
+            'view-rse-videos': 'RSE · Vidéos',
+            'view-rse-activity-intro': 'RSE · Activité',
+            'view-odd-intro': 'Les ODD',
+            'view-odd-activity': 'ODD · Le jeu',
+            'view-odd-mission': 'ODD · Ma mission',
+            'view-numerique-intro': 'Le Numérique',
+            'view-enigme-1': 'Numérique · Énigme 1/3',
+            'view-enigme-2': 'Numérique · Énigme 2/3',
+            'view-enigme-3': 'Numérique · Énigme 3/3',
+            'view-enigme-final': 'Numérique · Énigme finale',
+            'view-bonus-video': 'Bonus · Jeu vidéo',
+            'view-engagements': 'Mes engagements'
+        };
+        const M_MODULE_LABELS = {
+            'fondamentaux': 'Les Fondamentaux',
+            'odd': 'Les ODD',
+            'rse': 'La RSE en action',
+            'numerique': 'Le Numérique'
+        };
+        // Vues sans navigation basse (pour rester concentré)
+        const M_NO_NAV = ['view-home', 'view-quiz', 'view-quiz-intro', 'view-certificate'];
+
+        let mCurrentView = 'view-home';
+        let mHistory = [];
+        let mGoingBack = false;
+        let mSommaireUnlocked = false;
+        let mAllDoneAnnounced = false;
+        let mGuardActive = false;
+
+        function mAllModulesDone() {
+            return visitedViews.size === keyMilestones.length;
+        }
+
+        function mToast(message) {
+            const t = document.getElementById('m-toast');
+            t.innerText = message;
+            t.classList.add('show');
+            clearTimeout(mToast._timer);
+            mToast._timer = setTimeout(() => t.classList.remove('show'), 2800);
+        }
+
+        // --- Enveloppe de switchView : ajoute le comportement mobile sans toucher à la logique d'origine ---
+        const mOriginalSwitchView = switchView;
+        switchView = function(targetId) {
+            const module = getModuleForView(targetId);
+            const isNewModule = module && !visitedViews.has(module);
+
+            if (!mGoingBack && mCurrentView && mCurrentView !== targetId) {
+                mHistory.push(mCurrentView);
+                if (mHistory.length > 50) mHistory.shift();
+            }
+
+            mOriginalSwitchView(targetId);
+            mCurrentView = targetId;
+
+            // Bouton retour du téléphone : on garde une entrée d'historique tant qu'on n'est pas à l'accueil
+            if (targetId !== 'view-home' && !mGuardActive) {
+                history.pushState({ mGuard: true }, '');
+                mGuardActive = true;
+            }
+
+            if (isNewModule) {
+                mToast(`✓ Module « ${M_MODULE_LABELS[module]} » validé (${Math.round(visitedViews.size / keyMilestones.length * 100)} %)`);
+                if (mAllModulesDone() && !mAllDoneAnnounced) {
+                    mAllDoneAnnounced = true;
+                    setTimeout(() => mToast('🎉 Parcours terminé ! Ouvrez l\'onglet « Engagements »'), 3000);
+                }
+            }
+            mRefreshUI();
+        };
+
+        // --- Mise à jour de l'interface mobile ---
+        function mRefreshUI() {
+            const wrapper = document.querySelector('.app-wrapper');
+            const id = mCurrentView;
+
+            wrapper.classList.toggle('m-no-top', id === 'view-home' || id === 'view-certificate');
+            wrapper.classList.toggle('m-has-nav', mSommaireUnlocked && !M_NO_NAV.includes(id));
+
+            // Titre de la barre haute
+            let title = M_TITLES[id] || 'Développement durable';
+            if (id === 'view-quiz') {
+                title = (activeQuizData === finalQuizData) ? 'Quiz final' : 'Quiz diagnostic';
+            }
+            document.getElementById('m-title').innerText = title;
+
+            // Onglets
+            const tabHome = document.getElementById('m-tab-home');
+            const tabSommaire = document.getElementById('m-tab-sommaire');
+            const tabFin = document.getElementById('m-tab-fin');
+            tabHome.classList.toggle('active', id === 'view-home');
+            tabSommaire.classList.toggle('active', id === 'view-sommaire');
+            tabFin.classList.toggle('active', id === 'view-engagements');
+            tabFin.classList.toggle('locked', !mAllModulesDone());
+            const lock = tabFin.querySelector('.m-lock');
+            if (lock) lock.style.display = mAllModulesDone() ? 'none' : 'inline';
+
+            // Sommaire : état de chaque module
+            document.querySelectorAll('#view-sommaire .sommaire-card').forEach(card => {
+                const mod = card.dataset.module;
+                const done = visitedViews.has(mod);
+                card.classList.toggle('m-completed', done);
+                const badge = card.querySelector('.m-badge');
+                if (badge) badge.innerText = done ? '✓ Terminé' : 'À faire';
+                const btn = card.querySelector('.sommaire-btn');
+                if (btn) btn.innerText = done ? 'Revoir' : 'Démarrer';
+            });
+            const summary = document.getElementById('m-summary');
+            if (summary) {
+                summary.innerText = `${visitedViews.size} / ${keyMilestones.length} modules terminés`;
+            }
+            const finalCta = document.getElementById('m-final-cta');
+            if (finalCta) finalCta.style.display = mAllModulesDone() ? 'block' : 'none';
+
+            // Bloc « Module validé » sur la page qui valide le module
+            const module = getModuleForView(id);
+            if (module) mEnsureDoneBlock(id, module);
+        }
+
+        function mEnsureDoneBlock(viewId, module) {
+            const view = document.getElementById(viewId);
+            if (!view || view.querySelector('.m-module-done')) return;
+            const block = document.createElement('div');
+            block.className = 'm-module-done';
+            block.innerHTML = `<p>✓ Module « ${M_MODULE_LABELS[module]} » validé</p>`;
+            const btn = document.createElement('button');
+            btn.className = 'next-btn';
+            btn.innerText = 'Retour aux modules';
+            btn.onclick = () => switchView('view-sommaire');
+            block.appendChild(btn);
+            view.appendChild(block);
+        }
+
+        // --- Bouton retour (barre haute + bouton retour du téléphone) ---
+        function mobileBack() {
+            const modalName = document.getElementById('modal-input-overlay');
+            const modalCode = document.getElementById('modal-code-overlay');
+            if (modalCode.style.display === 'flex') { closeCodeModal(); return; }
+            if (modalName.style.display === 'flex') { modalName.style.display = 'none'; return; }
+
+            // On réutilise le lien « retour » prévu par l'auteur sur chaque page
+            const view = document.getElementById(mCurrentView);
+            const backLink = view && view.querySelector('.nav-link');
+            if (backLink) {
+                mGoingBack = true;
+                backLink.click();
+                mGoingBack = false;
+                mHistory.pop();
+                return;
+            }
+            // Sinon : page précédente
+            const previous = mHistory.pop() || 'view-home';
+            mGoingBack = true;
+            switchView(previous);
+            mGoingBack = false;
+        }
+
+        window.addEventListener('popstate', function() {
+            mGuardActive = false;
+            if (mCurrentView === 'view-home') return; // le prochain retour quitte la page
+            mobileBack();
+            if (mCurrentView !== 'view-home') {
+                history.pushState({ mGuard: true }, '');
+                mGuardActive = true;
+            }
+        });
+
+        // --- Navigation basse ---
+        function mobileTab(tab) {
+            if (tab === 'home') {
+                switchView('view-home');
+            } else if (tab === 'sommaire') {
+                if (mSommaireUnlocked) switchView('view-sommaire');
+                else mToast('Terminez d\'abord le quiz diagnostic');
+            } else if (tab === 'fin') {
+                if (mAllModulesDone()) switchView('view-engagements');
+                else mToast(`Terminez les 4 modules pour débloquer vos engagements (${visitedViews.size}/4)`);
+            }
+        }
+
+        // --- Déblocage du sommaire (après le quiz diagnostic ou avec un code) ---
+        const mOriginalShowResults = showResults;
+        showResults = function() {
+            if (activeQuizData === diagnosticQuizData) mSommaireUnlocked = true;
+            mOriginalShowResults();
+        };
+        const mOriginalMOG = secretCodes['MOG'];
+        secretCodes['MOG'] = function() { mSommaireUnlocked = true; mOriginalMOG(); };
+        const mOriginalLIA = secretCodes['LIA'];
+        secretCodes['LIA'] = function() { mSommaireUnlocked = true; mAllDoneAnnounced = true; mOriginalLIA(); mRefreshUI(); };
+
+        // --- Préparation des pages au chargement ---
+        (function mInit() {
+            // Sommaire : badges d'état + résumé + accès direct à la fin du parcours
+            const modules = ['fondamentaux', 'odd', 'rse', 'numerique'];
+            document.querySelectorAll('#view-sommaire .sommaire-card').forEach((card, i) => {
+                card.dataset.module = modules[i];
+                const badge = document.createElement('span');
+                badge.className = 'm-badge';
+                badge.innerText = 'À faire';
+                card.appendChild(badge);
+            });
+            const header = document.querySelector('#view-sommaire .sommaire-header');
+            const summary = document.createElement('p');
+            summary.id = 'm-summary';
+            summary.className = 'm-summary';
+            header.after(summary);
+            const grid = document.querySelector('#view-sommaire .sommaire-grid');
+            const finalCta = document.createElement('button');
+            finalCta.id = 'm-final-cta';
+            finalCta.className = 'cta-button m-final-cta';
+            finalCta.innerText = '🎉 Mes engagements et quiz final';
+            finalCta.onclick = () => switchView('view-engagements');
+            grid.after(finalCta);
+
+            // Infographies pleine page : toucher pour agrandir
+            document.querySelectorAll('.fullscreen-img').forEach(img => {
+                if (img.closest('#view-engagements')) return;
+                img.addEventListener('click', () => window.open(img.src, '_blank'));
+                const hint = document.createElement('span');
+                hint.className = 'm-zoom-hint';
+                hint.innerHTML = '<i class="fa-solid fa-magnifying-glass-plus"></i> Toucher pour agrandir';
+                img.parentElement.appendChild(hint);
+            });
+
+            mRefreshUI();
+        })();
+    </script>
+</body>
+</html>
+ 
